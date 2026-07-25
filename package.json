@@ -1,0 +1,59 @@
+{
+  "name": "compressify",
+  "version": "1.0.0",
+  "description": "Aplicativo desktop moderno para comprimir fotos individuais ou diretórios inteiros.",
+  "author": "Igor Ferreira",
+  "main": "./out/main/index.js",
+  "homepage": "./",
+  "scripts": {
+    "dev": "node scripts/electron-vite-runner.mjs dev",
+    "build": "npm run typecheck && electron-vite build",
+    "preview": "node scripts/electron-vite-runner.mjs preview",
+    "dist": "npm run build && electron-builder --win portable",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.1",
+    "@electron-toolkit/utils": "^3.0.0",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.10",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^34.0.2",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^3.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7"
+  },
+  "build": {
+    "appId": "com.igorferreira.compressify",
+    "productName": "Compressify",
+    "copyright": "Copyright © 2026 Igor Ferreira",
+    "icon": "build/icon.png",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "signAndEditExecutable": false
+    }
+  }
+}
