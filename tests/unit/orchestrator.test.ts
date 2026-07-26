@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { QueueOrchestrator, type JobOutcome } from '@/engine/core/orchestrator'
 import type { JobPool, PoolProbeTask, PoolRunTask, PoolStats } from '@/engine/core/pool'
 import type { FileMetadata, JobOptions, JobResult } from '@/engine/core/types'
+import { acceptImage } from '@/engine/image/support'
 import { JobError } from '@/engine/workers/protocol'
 import { imageFile, jpegHeader } from '../helpers/images'
 import { flush } from '../helpers/workers'
@@ -90,7 +91,7 @@ function fakePool(overrides: FakePoolOptions = {}) {
 
 describe('QueueOrchestrator — entrada', () => {
   it('aceita o que tem motor e recusa o resto com motivo', () => {
-    const orchestrator = new QueueOrchestrator({ pool: fakePool().pool })
+    const orchestrator = new QueueOrchestrator({ pool: fakePool().pool, accept: acceptImage })
 
     const { accepted, rejected } = orchestrator.add([
       imageFile({ name: 'foto.jpg' }),
@@ -104,7 +105,7 @@ describe('QueueOrchestrator — entrada', () => {
   })
 
   it('preserva o caminho relativo de quem veio de uma pasta', () => {
-    const orchestrator = new QueueOrchestrator({ pool: fakePool().pool })
+    const orchestrator = new QueueOrchestrator({ pool: fakePool().pool, accept: acceptImage })
 
     const { accepted } = orchestrator.add([
       imageFile({ name: 'praia.jpg', relativePath: 'viagem/2026/praia.jpg' }),
@@ -117,6 +118,7 @@ describe('QueueOrchestrator — entrada', () => {
     const events: string[] = []
     const orchestrator = new QueueOrchestrator({
       pool: fakePool().pool,
+      accept: acceptImage,
       events: {
         onAccepted: (job) => events.push(`aceito:${job.path}`),
         onRejected: (rejected) => events.push(`recusado:${rejected.file.name}`),
@@ -131,7 +133,7 @@ describe('QueueOrchestrator — entrada', () => {
 
 describe('QueueOrchestrator — execução', () => {
   it('processa a fila e resume o lote', async () => {
-    const orchestrator = new QueueOrchestrator({ pool: fakePool().pool })
+    const orchestrator = new QueueOrchestrator({ pool: fakePool().pool, accept: acceptImage })
     orchestrator.add([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
 
     const summary = await orchestrator.run(options)
@@ -148,7 +150,7 @@ describe('QueueOrchestrator — execução', () => {
 
   it('passa o custo em megapixels vindo do probe', async () => {
     const fake = fakePool()
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([
       imageFile({ name: 'a.jpg', header: jpegHeader({ width: 4000, height: 3000 }) }),
     ])
@@ -160,7 +162,7 @@ describe('QueueOrchestrator — execução', () => {
 
   it('segue sem orçamento quando o probe falha', async () => {
     const fake = fakePool({ probe: () => Promise.reject(new Error('cabeçalho ilegível')) })
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([imageFile({ name: 'a.jpg' })])
 
     const summary = await orchestrator.run(options)
@@ -183,6 +185,7 @@ describe('QueueOrchestrator — execução', () => {
 
     const orchestrator = new QueueOrchestrator({
       pool: fake.pool,
+      accept: acceptImage,
       events: {
         onMetadata: () => events.push('metadata'),
         onStart: () => events.push('start'),
@@ -212,7 +215,7 @@ describe('QueueOrchestrator — execução', () => {
           jobResult({ status: 'warning', message: 'Não foi possível atingir a meta.' }),
         ),
     })
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([imageFile({ name: 'a.jpg' })])
 
     const summary = await orchestrator.run(options)
@@ -231,7 +234,7 @@ describe('QueueOrchestrator — execução', () => {
           ? Promise.reject(new JobError('failed', 'wasm morreu'))
           : Promise.resolve(jobResult()),
     })
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
 
     const summary = await orchestrator.run(options)
@@ -242,7 +245,7 @@ describe('QueueOrchestrator — execução', () => {
 
   it('devolve a mesma execução quando run é chamado duas vezes', async () => {
     const fake = fakePool()
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([imageFile({ name: 'a.jpg' })])
 
     const first = orchestrator.run(options)
@@ -260,7 +263,7 @@ describe('QueueOrchestrator — nomes de saída', () => {
     // `Set` de nomes: os dois voltam com o mesmo nome. Só a thread principal vê
     // o lote inteiro — docs/HANDOFF.md §6.
     const fake = fakePool({ run: () => Promise.resolve(jobResult()) })
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([imageFile({ name: 'foto.jpg' }), imageFile({ name: 'foto.jpg' })])
 
     await orchestrator.run(options)
@@ -273,7 +276,7 @@ describe('QueueOrchestrator — nomes de saída', () => {
     const fake = fakePool({
       run: (task) => Promise.resolve(jobResult({ outputName: `${task.jobId}-compressify.webp` })),
     })
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
 
     await orchestrator.run(options)
@@ -294,7 +297,7 @@ describe('QueueOrchestrator — nomes de saída', () => {
           }),
         ),
     })
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([
       imageFile({ name: 'foto.jpg', relativePath: 'viagem/foto.jpg' }),
       imageFile({ name: 'foto.jpg' }),
@@ -311,7 +314,7 @@ describe('QueueOrchestrator — nomes de saída', () => {
 
   it('libera os nomes ao limpar a fila — a desambiguação é por lote', async () => {
     const fake = fakePool()
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
 
     orchestrator.add([imageFile({ name: 'foto.jpg' })])
     await orchestrator.run(options)
@@ -337,6 +340,7 @@ describe('QueueOrchestrator — cancelamento', () => {
 
     const orchestrator = new QueueOrchestrator({
       pool: fake.pool,
+      accept: acceptImage,
       events: { onSettled: (_id, outcome) => outcomes.push(outcome) },
     })
     const { accepted } = orchestrator.add([imageFile({ name: 'a.jpg' })])
@@ -359,7 +363,7 @@ describe('QueueOrchestrator — cancelamento', () => {
           task.signal?.addEventListener('abort', () => reject(JobError.aborted()))
         }),
     })
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     orchestrator.add([
       imageFile({ name: 'a.jpg' }),
       imageFile({ name: 'b.jpg' }),
@@ -375,7 +379,7 @@ describe('QueueOrchestrator — cancelamento', () => {
   })
 
   it('cancela quem nunca chegou a rodar', () => {
-    const orchestrator = new QueueOrchestrator({ pool: fakePool().pool })
+    const orchestrator = new QueueOrchestrator({ pool: fakePool().pool, accept: acceptImage })
     const { accepted } = orchestrator.add([imageFile({ name: 'a.jpg' })])
 
     orchestrator.cancel(accepted[0]?.id ?? '')
@@ -385,7 +389,7 @@ describe('QueueOrchestrator — cancelamento', () => {
 
   it('não reabre um job já concluído', async () => {
     const fake = fakePool()
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
     const { accepted } = orchestrator.add([imageFile({ name: 'a.jpg' })])
 
     await orchestrator.run(options)
@@ -396,7 +400,7 @@ describe('QueueOrchestrator — cancelamento', () => {
 
   it('dispose encerra o pool', () => {
     const fake = fakePool()
-    const orchestrator = new QueueOrchestrator({ pool: fake.pool })
+    const orchestrator = new QueueOrchestrator({ pool: fake.pool, accept: acceptImage })
 
     orchestrator.dispose()
 

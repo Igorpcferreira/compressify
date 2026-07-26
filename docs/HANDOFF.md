@@ -3,13 +3,13 @@
 > Documento de continuidade. Quem retomar o Compressify (pessoa ou sessão nova de
 > IA) deve ler **este arquivo primeiro** e só então mergulhar no `PLANO.md`.
 >
-> Última atualização: 26/07/2026, ao fim do **Incremento 4**. O motor comprime
-> arquivos reais de ponta a ponta, agora dentro de workers, com fila, orçamento
-> de memória e cancelamento. A troca de bundler do Incremento 3 continua
-> esperando o seu aval (§4).
+> Última atualização: 26/07/2026, ao fim do **Incremento 5**. O produto existe:
+> arrastar imagens, escolher preferências, comprimir em paralelo com progresso
+> por arquivo e cancelar no meio — tudo dentro do navegador. Falta a saída
+> (download e ZIP), que é o Incremento 6.
 >
-> **Dois blocos de trabalho estão na árvore sem commit** — os Incrementos 3 e 4.
-> As duas mensagens sugeridas estão em §12.
+> Os Incrementos 3 e 4 já estão comitados. **O Incremento 5 está na árvore, sem
+> commit**, e a mensagem sugerida está em §13.
 
 ---
 
@@ -25,7 +25,7 @@ Estas vieram do brief do Igor e não expiram:
    implementar. O Igor prefere discussão a execução cega — e já mudou de decisão duas
    vezes diante de dados (`image-q`, contrastes do design system).
 4. **Verificar versões antes de fixar dependências.** A data de conhecimento do modelo
-   pode estar defasada. Isso já pegou três armadilhas reais (§8).
+   pode estar defasada. Isso já pegou três armadilhas reais (§9).
 5. **Medir antes de afirmar.** O spike derrubou quatro suposições do plano, duas delas
    minhas. Números > intuição.
 
@@ -41,22 +41,24 @@ ce0db85  docs: plano técnico e spike do motor
 14416a4  feat: fundação do app web (Next 16, TS 6, Tailwind 4)
 e6590df  feat(engine): porta o algoritmo como código puro e testável
 3ebdc32  docs: handoff com estado do projeto e próximos incrementos
-         ⬅️ os Incrementos 3 e 4 estão na árvore, **sem commit**, aguardando validação
+c79a7d8  feat(engine): motor de imagem real, com codecs verificados de ponta a ponta
+0bd318c  feat(engine): concorrência — worker, pool com orçamento de memória e fila
+         ⬅️ o Incremento 5 está na árvore, **sem commit**, aguardando validação
 ```
 
-| Incremento                                   | Estado                                |
-| -------------------------------------------- | ------------------------------------- |
-| 0 — Spike do motor                           | ✅ concluído · [`SPIKE.md`](SPIKE.md) |
-| 1 — Fundação                                 | ✅ concluído                          |
-| 2 — Algoritmo puro + testes                  | ✅ concluído                          |
-| 3 — Motor de imagem real                     | ✅ concluído · 168 testes             |
-| **4 — Worker, pool, cancelamento**           | ✅ **concluído · 235 testes**         |
-| **5 — Store, fila e UI**                     | ⬅️ **próximo**                        |
-| 6 — Saída: download, ZIP, File System Access | pendente                              |
-| 7 — Acabamento: SEO, modo escuro, a11y, E2E  | pendente                              |
-| 8 — Documentação e ícones                    | pendente                              |
+| Incremento                                       | Estado                                |
+| ------------------------------------------------ | ------------------------------------- |
+| 0 — Spike do motor                               | ✅ concluído · [`SPIKE.md`](SPIKE.md) |
+| 1 — Fundação                                     | ✅ concluído                          |
+| 2 — Algoritmo puro + testes                      | ✅ concluído                          |
+| 3 — Motor de imagem real                         | ✅ concluído · 168 testes             |
+| 4 — Worker, pool, cancelamento                   | ✅ concluído · 235 testes             |
+| **5 — Store, fila e UI**                         | ✅ **concluído · 269 testes**         |
+| **6 — Saída: download, ZIP, File System Access** | ⬅️ **próximo**                        |
+| 7 — Acabamento: SEO, modo escuro, a11y, E2E      | pendente                              |
+| 8 — Documentação e ícones                        | pendente                              |
 
-`npm run check` (typecheck + lint + formatação + 235 testes) passa limpo em ~10 s.
+`npm run check` (typecheck + lint + formatação + 269 testes) passa limpo em ~11 s.
 `npm run build` gera exportação estática sem nenhuma serverless function — **agora com
 webpack, não Turbopack**. O porquê está na §4.
 
@@ -65,10 +67,18 @@ webpack, não Turbopack**. O porquê está na §4.
 ```
 app/
   layout.tsx          fontes via next/font (auto-hospedadas), metadata, ThemeScript
-  page.tsx            PLACEHOLDER do Incremento 1 — será substituído no 5
+  page.tsx            ▲ a home: cabeçalho, herói e o espaço de trabalho
   globals.css         design system inteiro em @theme + camada semântica de tema
 src/
   components/theme/ThemeScript.tsx     resolve o tema antes da primeira pintura
+  components/theme/ThemeToggle.tsx     ▲ alterna claro/escuro sem flash
+  components/brand/                    ▲ Logo · PrivacyBadge
+  components/ui/                       ▲ Button · SegmentedControl · Chip · Slider
+  components/queue/                    ▲ Dropzone · FileCard · QueueList · ActionBar
+                                         OptionsPanel · RejectedNotice · QueueWorkspace
+  store/queue.ts                       ▲ a store Zustand ligada ao orquestrador
+  lib/files.ts                         ▲ drop de pastas, varredura recursiva, colar
+  lib/cn.ts                            ▲ junção de classes, 12 linhas
   engine/core/types.ts                 contratos (CompressionEngine, JobResult…)
   engine/core/registry.ts              resolve o motor por arquivo
   engine/core/naming.ts                ◆ unicidade de caminho, genérica
@@ -87,17 +97,18 @@ src/
   engine/image/engine.ts               ★ ImageEngine: supports/probe/process
   engine/image/format.ts               smart/original → formato concreto
   engine/image/naming.ts               sufixo -compressify, colisões, caminho relativo
+  engine/image/support.ts              ▲ o que é aceito e por que o resto não é
   lib/format.ts                        formatBytes/formatPercent em pt-BR
 tests/
   helpers/images.ts                    construtores de cabeçalho, File e foto sintética
   helpers/codecs-node.ts               inicializa os codecs reais em Node
   helpers/workers.ts                   ◆ workers de mentira, dirigidos pelo teste
-  unit/                                229 testes — lógica, com codecs injetados
+  unit/                                263 testes — lógica, com codecs injetados
   integration/engine-codecs.test.ts    6 testes — o motor com os codecs de verdade
 docs/                                  PLANO, SPIKE, HANDOFF, brand/
 ```
 
-`★` é o Incremento 3, `◆` é o Incremento 4.
+`★` é o Incremento 3, `◆` o Incremento 4, `▲` o Incremento 5.
 
 Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/07/2026
 (as seis coincidiram com o que o plano previa):
@@ -105,6 +116,13 @@ Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/0
 ```
 @jsquash/jpeg 1.6.0 · @jsquash/png 3.1.1 · @jsquash/webp 1.5.0
 @jsquash/avif 2.1.1 · @jsquash/resize 2.1.1 · @jsquash/oxipng 2.3.0
+```
+
+Do Incremento 5, conferidas contra o `latest` do npm em 26/07/2026 — as duas bateram
+com o que o `PLANO.md` §6.2 previa:
+
+```
+zustand 5.0.14 · lucide-react 1.27.0
 ```
 
 ---
@@ -385,11 +403,108 @@ não empurrar o risco para frente, liguei um componente temporário na home, rod
   os codecs seguem em import dinâmico, carregados só quando um job produz aquele formato.
 
 O Turbopack não foi testado com o worker (o `dev` é dele; o `build` é webpack desde §4).
-Vale checar no Incremento 5, quando a UI passar a montar o pool de verdade.
+Vale checar no Incremento 5, quando a UI passar a montar o pool de verdade. **Checado —
+§8.**
 
 ---
 
-## 8. Armadilhas já encontradas — não repetir
+## 8. O Incremento 5 — o produto aparece
+
+A fila deixou de ser API e virou tela: arrastar, escolher preferências, comprimir com
+progresso por arquivo, cancelar um ou todos. O que **não** entrou é a saída — download
+individual, ZIP e File System Access são o Incremento 6, e o card mostra o resultado sem
+botão de baixar até lá.
+
+```
+app/page.tsx            HTML estático: cabeçalho, herói, selo, rodapé
+  └ QueueWorkspace      o limite do interativo — daqui para baixo é 'use client'
+      ├ Dropzone        arrastar · pasta · colar
+      ├ RejectedNotice  o que não entrou, com o motivo
+      ├ OptionsPanel    modo · meta · formato · qualidade
+      ├ ActionBar       resumo do lote + comprimir/cancelar/limpar
+      └ QueueList → FileCard × N
+```
+
+### A invariante que sustenta a escolha do Zustand
+
+O `PLANO.md` §1.4 escolheu Zustand por um argumento de re-render, e um argumento não
+verificado é uma opinião. Ele agora é teste:
+
+- `items` é um **mapa por id**. Um evento de progresso troca a referência de um item e
+  de mais nenhum, então o card dos outros 49 arquivos não repinta.
+- `stats` é **estado**, não seletor derivado — recalculado quando um job entra, sai ou
+  termina, nunca a cada 1%. Um seletor que devolvesse `{...}` novo a cada leitura
+  repintaria a lista inteira 100 vezes por arquivo.
+- `QueueList` assina **só o array de ids**; o item inteiro é lido dentro do `FileCard`,
+  que é `memo`.
+
+Dois testes em `queue-store.test.ts` prendem exatamente isso: um compara referências de
+objeto antes e depois de um progresso, o outro exige que `stats` seja o **mesmo objeto**
+depois de um evento de 40%.
+
+### O vazamento de camada que o build revelou
+
+Medindo o bundle depois de ligar a UI: **13,1 KB de motor de imagem — estratégia,
+decode, cache de escala — estavam no chunk inicial da thread principal**, código que só
+roda dentro do worker. A causa era uma linha: o orquestrador chamava
+`createDefaultRegistry()` para responder "este arquivo é suportado?", e o registro
+instancia o `ImageEngine`.
+
+Corrigido invertendo a dependência: a **política de aceitação** entra por injeção
+(`accept: (file) => string | null`), e a implementação de imagem mora em
+`engine/image/support.ts`, que é puro e importa só `format.ts`. Quem não injeta nada
+aceita tudo e deixa a decisão para o worker — a mensagem é a mesma, só chega como card
+com erro em vez de recusa na entrada.
+
+| Antes                  | Depois                                |
+| ---------------------- | ------------------------------------- |
+| 7 scripts · 574,8 KB   | 6 scripts · 561,7 KB                  |
+| motor no chunk inicial | motor só no chunk do worker (16,2 KB) |
+
+Não é só o tamanho de hoje: na Fase 2 a mesma linha arrastaria o motor de PDF junto.
+
+### Decisões de UI que valem discussão
+
+1. **O dropzone é um `<button>`, não uma `div` com `onClick`.** Ganha Enter, Espaço,
+   foco e papel de botão sem nenhuma linha de ARIA. É a forma mais confiável de cumprir
+   "totalmente operável por teclado" do brief §7.
+2. **Modo, meta e formato são `radiogroup`, não abas.** Aba troca o painel visível; isto
+   escolhe um valor de formulário. Com setas do teclado e foco acompanhando a seleção.
+3. **A qualidade é um `<input type="range">` de verdade**, estilizado — não uma
+   reconstrução com divs. Range nativo já traz teclado completo, anúncio de valor e
+   toque; refazer à mão é como se perde acessibilidade sem perceber.
+4. **O tema é lido com `useSyncExternalStore`**, não com `useEffect` + `setState`. A
+   fonte da verdade é o atributo que o `ThemeScript` já resolveu antes da primeira
+   pintura; o `getServerSnapshot` devolve `null`, então a pré-renderização sai com
+   rótulo neutro e a hidratação não diverge. (O lint do React Compiler recusa
+   `setState` em efeito — e está certo.)
+5. **As preferências travam enquanto o lote roda.** O orquestrador recebe as opções uma
+   vez, no `run`; deixar o slider vivo produziria cards com qualidades diferentes sem
+   explicação.
+6. **Os padrões são os do app Electron** — auto · 5 MB · inteligente · qualidade 82,
+   faixa 35–95, meta personalizada 0,1–500 MB. Fidelidade é requisito.
+7. **Arrastar pasta preserva a estrutura.** `FileSystemFileEntry.file()` devolve um
+   `File` com `webkitRelativePath` **vazio**, então `lib/files.ts` define a propriedade
+   na mão — é o que mantém o motor com um contrato só. Com teto de profundidade e de
+   itens, porque uma pasta com link circular não pode travar a aba.
+
+### O que foi verificado, e o que não
+
+- **`npm run build`**: exportação estática, 6 scripts iniciais, **zero código de codec**
+  no bundle inicial, 14 `.wasm` como assets separados, o dropzone presente no HTML
+  pré-renderizado.
+- **`next dev` (Turbopack) com o worker no grafo**: compila e serve a home com dropzone,
+  preferências, selo e slider. Fecha o risco que o §7 tinha deixado aberto.
+- **269 testes**, 34 novos: 18 da store (com o orquestrador real e o pool falso), 10 da
+  varredura de pastas e 6 do dropzone em jsdom.
+- **Não verificado:** comprimir um arquivo de verdade dentro de um navegador. Nada aqui
+  prova que o worker roda o codec no Chrome — é o E2E do Incremento 7, e é o único jeito
+  honesto de dizer "funciona". Até lá, o teste é abrir o `npm run dev` e arrastar uma
+  foto.
+
+---
+
+## 9. Armadilhas já encontradas — não repetir
 
 | Armadilha                     | O que aconteceu                                                                                                                                                                                                                                    |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -411,7 +526,7 @@ Vale checar no Incremento 5, quando a UI passar a montar o pool de verdade.
 
 ---
 
-## 9. Decisões de produto que já foram fechadas com o Igor
+## 10. Decisões de produto que já foram fechadas com o Igor
 
 Não reabrir sem motivo novo:
 
@@ -433,7 +548,7 @@ Não reabrir sem motivo novo:
 
 ---
 
-## 10. Riscos ainda abertos
+## 11. Riscos ainda abertos
 
 | Risco                                                                                    | Situação                                                                     |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -448,124 +563,105 @@ Não reabrir sem motivo novo:
 
 ---
 
-## 11. Critérios de aceite da Fase 1 — rastreamento
+## 12. Critérios de aceite da Fase 1 — rastreamento
 
 Do brief original, com o estado de cada um:
 
-- [ ] 50 imagens em paralelo com progresso individual — pool e fila prontos e testados;
-      falta a UI, no Incremento 5
+- [ ] 50 imagens em paralelo com progresso individual — **implementado de ponta a ponta**;
+      falta rodar num navegador de verdade (Incremento 7)
 - [ ] Modo meta equivalente ao Electron (±10%, AVIF excluído) — motor pronto e verificado;
       falta a comparação com as fixtures do app Electron, no Incremento 7
 - [ ] Nenhuma requisição carregando conteúdo do usuário — `privacy.spec.ts`, Incremento 7
-- [ ] A aba não trava — pixels só em worker, inclusive o `probe`; verificar no 5
-- [ ] Cancelar a fila no meio — **implementado e testado** (`cancelAll`, com terminação
-      de worker preso); falta o botão, no Incremento 5
+- [ ] A aba não trava — pixels só em worker (inclusive o `probe`) e a invariante de
+      re-render da store está sob teste; medir de fato no 7
+- [x] Cancelar a fila no meio — botão na `ActionBar`, `cancelAll` com terminação de
+      worker preso, e cancelamento por arquivo no card
 - [ ] Baixar tudo em ZIP — Incremento 6
 - [ ] Chrome, Firefox e Safari com degradação documentada — Incremento 7
-- [ ] Lighthouse > 90 em Performance e Acessibilidade — Incremento 7; os codecs continuam
-      fora do bundle inicial mesmo com o worker no grafo (§7)
-- [x] `npm run check` passa limpo — 235 testes
-- [ ] Modo claro e escuro completos — tokens prontos, aplicação nos Incrementos 5 e 7
+- [ ] Lighthouse > 90 em Performance e Acessibilidade — Incremento 7; o bundle inicial
+      está em 6 scripts sem uma linha de codec, e o motor saiu dele no §8
+- [x] `npm run check` passa limpo — 269 testes
+- [ ] Modo claro e escuro completos — tokens aplicados em toda a UI e alternador na barra
+      superior; falta a revisão de contraste tela a tela, no 7
 
 ---
 
-## 12. Como retomar
+## 13. Como retomar
 
 ```bash
 cd Compressify
 npm install          # o .npmrc já força o registry público
-npm run check        # deve passar limpo — 235 testes, ~10 s
-npm run dev          # http://localhost:3000
+npm run check        # deve passar limpo — 269 testes, ~11 s
+npm run dev          # http://localhost:3000 — arraste uma foto e veja funcionar
 npm run build        # exportação estática, via webpack (§4)
 ```
 
-**Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §8.
+**Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §9.
 
-### O Incremento 5, em uma frase cada
+### O Incremento 6, em uma frase cada
 
-- `src/store/queue.ts` — a store Zustand, alimentada pelos eventos do
-  `QueueOrchestrator` (`onAccepted`, `onMetadata`, `onStart`, `onProgress`, `onSettled`,
-  `onIdle`). Normalizada por `id`, com seletores estáveis: cada `FileCard` assina o seu.
-- `src/components/queue/Dropzone.tsx` — arrastar, colar e escolher pasta, com teclado.
-  Os recusados já chegam prontos, com motivo, em `add().rejected`.
-- `FileCard` · `QueueList` · `ActionBar` — progresso individual, cancelar um, cancelar
-  todos, e o aviso de "esta imagem sozinha excede o orçamento de memória"
-  (`MegapixelBudget.exceedsTotal`).
-- A raiz de composição: `createImagePool()` de `engine/workers/spawn.ts` dentro de um
-  `useEffect`, com `dispose()` na limpeza. **Conferir o `next dev` com o worker** — o
-  Turbopack ainda não viu esse grafo (§10).
+- `src/lib/download.ts` — download individual: `URL.createObjectURL` + `<a download>`,
+  com `revoke` no clique seguinte. O `blob` de cada job já está guardado no item da
+  store, esperando por isto.
+- `src/engine/workers/zip.worker.ts` — "Baixar tudo (.zip)" com `fflate` **dentro de um
+  worker**, com o `zip()` assíncrono. Montar 50 arquivos na thread principal trava a
+  aba, que é o critério de aceite #4. Conferir a versão do `fflate` contra o `latest`
+  antes de fixar (o `PLANO.md` §6.2 previa 0.8.3, e hoje é 0.8.3).
+- Caminhos relativos preservados dentro do ZIP: `item.outputName` já vem com a subpasta,
+  e a unicidade global já foi resolvida no §7.
+- `src/lib/fsAccess.ts` — se `window.showDirectoryPicker` existir, salvar direto numa
+  pasta recriando a árvore. Se não existir, cair no download comum **sem alarde e sem
+  mencionar o recurso** (`PLANO.md` §4.2).
+- O botão "Baixar" volta ao `FileCard` (o board o desenha) e "Baixar tudo (.zip)" entra
+  na `ActionBar`.
 
-O `zustand` ainda não está instalado. Conferir a versão contra o `latest` do npm antes
-de fixar — regra §1.4, que já pegou três armadilhas.
+Antes de começar, vale gastar cinco minutos abrindo o `npm run dev` e arrastando uma
+foto de verdade: é o único risco 🔴 da tabela do §11, e o Incremento 6 constrói em cima
+de um caminho que ninguém executou ainda num navegador.
 
-### As duas mensagens de commit sugeridas
+### A mensagem de commit sugerida
 
-Os Incrementos 3 e 4 estão na árvore, sem commit. São dois blocos independentes e
-merecem dois commits, nesta ordem.
-
-**1 — Incremento 3** (`src/engine/image/*`, `src/engine/core/{types,registry}.ts`,
-`tests/unit/{engine,probe,registry}.test.ts`, `tests/integration/`, `next.config.ts`,
-`package.json`):
-
-```
-feat(engine): motor de imagem real, com codecs verificados de ponta a ponta
-
-ImageEngine implementando CompressionEngine: leitura de cabeçalho sem
-decodificar, decode híbrido (nativo primeiro, jSquash de fallback), encode por
-formato com carregamento sob demanda, cache de escala de um slot, guarda de
-tempo de 20 s e progresso monotônico. Registro de motores resolvendo por
-arquivo.
-
-Os pontos de operação são os medidos no Incremento 0: AVIF speed 8, oxipng
-nível 1, WebP sem target_size. O quantizador próprio faz 12MP em 92 ms, o que
-fecha o risco aberto no PLANO.md §11.
-
-60 testes novos (168 no total): 54 de unidade com codecs injetados e 6 de
-integração com os codecs reais, provando que um JPEG vira um WebP válido e que
-o PNG com perda cai para a paleta prescrita.
-
-O build de produção passa a usar webpack: o Turbopack trava indefinidamente ao
-empacotar os pacotes jSquash com variante multi-thread (oxipng pkg-parallel e
-avif_enc_mt). Diagnóstico completo em docs/HANDOFF.md §4.
-```
-
-**2 — Incremento 4** (`src/engine/core/{budget,naming,pool,orchestrator}.ts`,
-`src/engine/workers/`, `src/engine/image/naming.ts`, `tests/helpers/workers.ts`,
-`tests/unit/{budget,core-naming,pool,runner,orchestrator}.test.ts`):
+O Incremento 5 está na árvore, sem commit (`src/store/`, `src/components/`, `src/lib/`,
+`src/engine/image/support.ts`, `app/page.tsx`, `tests/unit/{queue-store,files,dropzone}`,
+mais os ajustes de `orchestrator.ts` e `registry.ts`):
 
 ```
-feat(engine): concorrência — worker, pool com orçamento de memória e fila
+feat(ui): a fila ganha tela — store, dropzone, cards e preferências
 
-O motor passa a rodar fora da thread principal. Worker de imagem com o
-runner separado da ligação com `self`, pool dimensionado por núcleos e por
-megapixels em voo, e orquestrador com a fila que a UI vai consumir por
-eventos.
+A store Zustand ligada aos eventos do orquestrador, o dropzone com arrastar,
+colar e escolher pasta, o card de arquivo com progresso individual e as
+preferências com os mesmos padrões do app Electron (auto, 5 MB, inteligente,
+qualidade 82).
 
-Cancelamento de verdade: o worker checa o signal entre tentativas e, se não
-responder ao abort em 2 s — preso num encode, que não é interrompível —, é
-terminado e substituído. Falha de execução ganha uma retentativa com worker
-novo, que é a mitigação do PLANO.md §2.2 para o avif que quebrou uma vez no
-Firefox.
+A escolha do Zustand vira teste em vez de opinião: um evento de progresso troca
+a referência de um item e de mais nenhum, e as estatísticas do lote são estado,
+não seletor derivado. Dois testes prendem exatamente isso — é o que sustenta 50
+cards sem repintar a lista a cada 1%.
 
-O `probe` também roda no worker: ele decodifica quando o cabeçalho é
-ilegível, e decodificar 24MP na thread principal é a aba travada. A reserva
-final do nome de saída é global, na thread principal, porque o Set de cada
-worker só enxerga os jobs daquele worker.
+O build revelou um vazamento de camada e ele foi corrigido: o orquestrador
+chamava createDefaultRegistry() só para saber se um arquivo é aceito, e isso
+punha 13 KB de motor no bundle inicial da thread principal. A política de
+aceitação passa a entrar por injeção, com a implementação de imagem em
+engine/image/support.ts, que é puro. O bundle inicial caiu de 7 scripts e
+574,8 KB para 6 e 561,7 KB, e o motor voltou para o chunk do worker.
 
-67 testes novos (235 no total), todos em Node: o pool recebe uma fábrica de
-workers de mentira e o orquestrador recebe um pool de mentira.
+Arrastar pasta preserva a estrutura de subpastas: o File que vem de
+FileSystemFileEntry chega com webkitRelativePath vazio, então lib/files.ts
+define o caminho na mão, com teto de profundidade contra link circular.
 
-O build de produção foi verificado com o worker ligado: o chunk é emitido, os
-14 .wasm continuam separados e nenhum script do HTML inicial contém código de
-codec. Detalhes em docs/HANDOFF.md §7.
+34 testes novos (269 no total): 18 da store com o orquestrador real, 10 da
+varredura de pastas e 6 do dropzone em jsdom. O next dev com Turbopack passou a
+compilar e servir a home com o worker no grafo, fechando o risco que o
+Incremento 4 tinha deixado aberto.
 ```
 
 Ordem de leitura para quem chega: este arquivo → `PLANO.md` §3 (as decisões do motor)
 → `SPIKE.md` §5 (as mitigações medidas) → `src/engine/image/strategy.ts` →
-`src/engine/image/engine.ts` → `src/engine/core/pool.ts`.
+`src/engine/image/engine.ts` → `src/engine/core/pool.ts` → `src/store/queue.ts`.
 
 O comentário no topo do `strategy.ts` explica por que ele não importa nada — essa
 separação é o que sustenta a testabilidade do projeto inteiro. O `engine.ts` liga os
-codecs sem quebrá-la: eles entram por injeção, e é por isso que 229 dos 235 testes rodam
-sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a fábrica de workers —
-é o motivo de a concorrência inteira ser testável sem abrir um navegador.
+codecs sem quebrá-la: eles entram por injeção, e é por isso que 263 dos 269 testes rodam
+sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a fábrica de workers,
+e a `store/queue.ts` uma acima ainda, com a fábrica de orquestrador — é o motivo de a
+concorrência e a fila inteiras serem testáveis sem abrir um navegador.

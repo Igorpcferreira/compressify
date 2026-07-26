@@ -11,7 +11,7 @@
  */
 
 import { ImageEngine } from '@/engine/image/engine'
-import { DROPPED_INPUT_EXTENSIONS, isDroppedInput } from '@/engine/image/format'
+import { imageRejectionReason } from '@/engine/image/support'
 import type { CompressionEngine } from './types'
 
 export interface EngineRegistry {
@@ -51,19 +51,13 @@ export function createDefaultRegistry(): EngineRegistry {
 }
 
 /**
- * Por que este arquivo não é aceito — para a UI dizer algo útil em vez de
- * ignorar em silêncio.
+ * Por que este arquivo não é aceito.
  *
- * O TIFF tem mensagem própria: ele era aceito pelo app Electron e sai aqui
- * porque não existe decoder no jSquash e nenhum navegador além do Safari
- * decodifica (docs/PLANO.md §3.5). Quem arrasta um `.tif` merece saber disso,
- * não um "formato não suportado" genérico.
+ * A mensagem em si mora em `image/support.ts`, que é puro e não arrasta o
+ * motor: a thread principal precisa dela no instante do drop e não deve pagar
+ * 13 KB de estratégia e decode por isso. Aqui fica só o encaminhamento, porque
+ * é deste módulo que o worker já importa.
  */
 export function unsupportedReason(file: File): string {
-  if (isDroppedInput(file.name)) {
-    const extensions = DROPPED_INPUT_EXTENSIONS.join(' e ')
-    return `Arquivos ${extensions} não são suportados: os navegadores não decodificam TIFF. Converta para PNG ou JPEG antes.`
-  }
-
-  return `Formato não suportado: ${file.name}`
+  return imageRejectionReason(file)
 }

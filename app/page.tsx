@@ -1,36 +1,56 @@
 /**
- * Placeholder do Incremento 1.
+ * A home.
  *
- * A home real (dropzone, fila, selo de privacidade) é o Incremento 5. Esta
- * página existe para que o build estático tenha uma rota e para provar que os
- * tokens do design system estão realmente ligados — se as fontes ou as cores
- * não estiverem, isto quebra visivelmente.
+ * Server component de propósito: cabeçalho, herói e rodapé saem no HTML
+ * estático, e só a `QueueWorkspace` carrega JavaScript. As landings por
+ * ferramenta (`/comprimir-imagem`, `/converter-webp`) são do Incremento 7.
  */
+
+import { Logo } from '@/components/brand/Logo'
+import { PrivacyBadge } from '@/components/brand/PrivacyBadge'
+import { QueueWorkspace } from '@/components/queue/QueueWorkspace'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
+
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center gap-8 px-6 py-16">
-      <p className="text-eyebrow text-text-muted uppercase">Fundação · Incremento 1</p>
+    <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-6">
+      <header className="border-border flex h-17 items-center justify-between border-b">
+        <Logo />
+        <nav aria-label="Ferramentas" className="flex items-center gap-6">
+          <span className="text-small text-text hidden font-medium sm:inline">Imagens</span>
+          <span className="text-small text-text-muted hidden sm:inline" aria-disabled>
+            PDF
+          </span>
+          <span className="text-small text-text-muted hidden sm:inline" aria-disabled>
+            Vídeo
+          </span>
+          <ThemeToggle />
+        </nav>
+      </header>
 
-      <h1 className="text-h1 font-display text-balance">Comprima qualquer arquivo. Sem upload.</h1>
+      <main className="flex flex-1 flex-col gap-8 py-12">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <PrivacyBadge />
 
-      <p className="text-body text-text-muted max-w-prose text-pretty">
-        Projeto em construção. O motor de compressão e a interface chegam nos próximos incrementos —
-        o plano está em <code className="font-mono text-data">docs/PLANO.md</code> e as medições que
-        o embasam em <code className="font-mono text-data">docs/SPIKE.md</code>.
-      </p>
+          <h1 className="font-display text-h1 text-balance sm:text-[2.75rem] sm:leading-[1.05]">
+            Comprima qualquer imagem.
+            <br />
+            Sem upload.
+          </h1>
 
-      <dl className="border-border grid gap-4 border-t pt-8 sm:grid-cols-3">
-        {[
-          { termo: 'Processamento', valor: '100% no navegador' },
-          { termo: 'Arquivos enviados', valor: 'Nenhum' },
-          { termo: 'Limite de lote', valor: 'Sem limite' },
-        ].map(({ termo, valor }) => (
-          <div key={termo} className="flex flex-col gap-1">
-            <dt className="text-caption text-text-muted">{termo}</dt>
-            <dd className="text-data font-mono font-medium">{valor}</dd>
-          </div>
-        ))}
-      </dl>
-    </main>
+          <p className="text-text-muted max-w-prose text-pretty">
+            Em massa, sem limite, sem cadastro e sem marca d’água. Os arquivos são processados
+            dentro do seu navegador e nunca saem do seu computador.
+          </p>
+        </div>
+
+        <QueueWorkspace />
+      </main>
+
+      <footer className="border-border text-caption text-text-muted flex flex-wrap items-center justify-between gap-3 border-t py-7">
+        <span>Compressify · processamento 100% local</span>
+        <span className="font-mono">JPG · PNG · WEBP · AVIF</span>
+      </footer>
+    </div>
   )
 }

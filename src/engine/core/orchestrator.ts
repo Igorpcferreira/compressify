@@ -4,9 +4,12 @@
  * O orquestrador é a única peça que vê o lote inteiro, e é por isso que três
  * responsabilidades moram aqui e não no pool:
  *
- * 1. **Aceitar ou recusar na entrada.** `supports()` é síncrono e puro; um
- *    `.tif` arrastado por engano vira mensagem explicativa na hora, sem gastar
- *    worker (docs/PLANO.md §3.5).
+ * 1. **Aceitar ou recusar na entrada.** A política de aceitação é síncrona e
+ *    pura; um `.tif` arrastado por engano vira mensagem explicativa na hora,
+ *    sem gastar worker (docs/PLANO.md §3.5). Ela entra por injeção, e não como
+ *    import do registro de motores: o registro instancia os motores, e importar
+ *    o `ImageEngine` na thread principal só para chamar `supports()` colocava
+ *    13 KB de estratégia e decode no bundle inicial — medido no build.
  *
  * 2. **Garantir que dois arquivos nunca disputem o mesmo nome de saída.** Cada
  *    worker tem sua própria instância de motor e seu próprio `Set` de nomes,
@@ -25,9 +28,20 @@
 import { megapixelsOf } from './budget'
 import { reserveUniquePath } from './naming'
 import type { JobPool } from './pool'
-import { createDefaultRegistry, unsupportedReason, type EngineRegistry } from './registry'
 import type { FileMetadata, JobOptions, JobResult, JobStatus } from './types'
 import { isAbortError } from '@/engine/workers/protocol'
+
+/**
+ * Devolve o motivo da recusa, ou `null` quando o arquivo é aceito.
+ *
+ * Quem não injeta uma política aceita tudo e deixa a decisão para o worker,
+ * que tem o registro de motores completo. Nesse caminho a mensagem é a mesma —
+ * ela vem do `registry.unsupportedReason()` — só chega como card com erro em
+ * vez de recusa na entrada. Degradação, não silêncio.
+ */
+export type AcceptancePolicy = (file: File) => string | null
+
+const ACCEPT_ANY: AcceptancePolicy = () => null
 
 export interface QueuedFile {
   id: string
@@ -85,7 +99,8 @@ export interface QueueJobView {
 
 export interface OrchestratorOptions {
   pool: JobPool
-  registry?: EngineRegistry
+  /** Recusa na entrada. Sem ela, tudo entra e o worker decide. */
+  accept?: AcceptancePolicy
   events?: OrchestratorEvents
 }
 
@@ -105,7 +120,7 @@ function messageOf(error: unknown): string {
 
 export class QueueOrchestrator {
   private readonly pool: JobPool
-  private readonly registry: EngineRegistry
+  private readonly accept: AcceptancePolicy
   private readonly events: OrchestratorEvents
   private readonly jobs = new Map<string, Job>()
 
@@ -120,7 +135,7 @@ export class QueueOrchestrator {
 
   constructor(options: OrchestratorOptions) {
     this.pool = options.pool
-    this.registry = options.registry ?? createDefaultRegistry()
+    this.accept = options.accept ?? ACCEPT_ANY
     this.events = options.events ?? {}
   }
 
@@ -143,8 +158,9 @@ export class QueueOrchestrator {
     const rejected: RejectedFile[] = []
 
     for (const file of files) {
-      if (!this.registry.resolve(file)) {
-        const entry = { file, reason: unsupportedReason(file) }
+      const reason = this.accept(file)
+      if (reason !== null) {
+        const entry = { file, reason }
         rejected.push(entry)
         this.events.onRejected?.(entry)
         continue

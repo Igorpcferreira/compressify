@@ -21,13 +21,9 @@ import type {
 } from '@/engine/core/types'
 import { encodeImage, resizeImage } from './codecs'
 import { decodeImage, type DecodeOptions, type DecodeResult, type RgbaImage } from './decode'
-import {
-  SUPPORTED_INPUT_MIME_TYPES,
-  isSupportedInput,
-  mimeTypeForFormat,
-  resolveOutputFormat,
-} from './format'
+import { mimeTypeForFormat, resolveOutputFormat } from './format'
 import { buildOutputPath } from './naming'
+import { supportsImage } from './support'
 import { HEADER_SLICE_BYTES, isDeepPng, readImageHeader, type ImageHeader } from './probe'
 import {
   AbortedError,
@@ -211,10 +207,7 @@ export class ImageEngine implements CompressionEngine {
   }
 
   supports(file: File): boolean {
-    return (
-      isSupportedInput(file.name) ||
-      (SUPPORTED_INPUT_MIME_TYPES as readonly string[]).includes(file.type)
-    )
+    return supportsImage(file)
   }
 
   /**
