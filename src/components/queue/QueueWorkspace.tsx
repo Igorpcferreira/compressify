@@ -8,6 +8,7 @@
 
 'use client'
 
+import { useEffect } from 'react'
 import { useQueueStore } from '@/store/queue'
 import { ActionBar } from './ActionBar'
 import { Dropzone } from './Dropzone'
@@ -17,6 +18,22 @@ import { RejectedNotice } from './RejectedNotice'
 
 export function QueueWorkspace() {
   const addFiles = useQueueStore((state) => state.addFiles)
+  const hydratePreferences = useQueueStore((state) => state.hydratePreferences)
+
+  /**
+   * As preferências entram **depois** da montagem, e é deliberado.
+   *
+   * A página é pré-renderizada na build, onde `localStorage` não existe. Ler a
+   * preferência durante a primeira renderização do cliente faria o React
+   * encontrar um HTML diferente do que ele acabou de gerar — o painel diria
+   * "meta · 10 MB" onde o documento diz "auto · 5 MB" — e isso é erro de
+   * hidratação, não detalhe estético. O preço é um quadro com os padrões antes
+   * dos valores guardados aparecerem, que é o mesmo preço que o `ThemeToggle`
+   * paga pelo rótulo neutro.
+   */
+  useEffect(() => {
+    hydratePreferences()
+  }, [hydratePreferences])
 
   return (
     <div className="flex flex-col gap-6">

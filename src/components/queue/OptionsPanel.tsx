@@ -9,6 +9,12 @@
  * Os controles ficam desabilitados enquanto a fila roda: mudar a qualidade no
  * meio do lote produziria resultados inconsistentes entre os cards, e o
  * orquestrador recebe as opções uma vez, no `run`.
+ *
+ * Os **perfis** ficam em cima porque são a resposta para a pergunta que a
+ * pessoa realmente tem ("para onde essa foto vai?"), e os controles detalhados
+ * viram o que sempre deveriam ter sido: o ajuste fino de quem quer ajustar. O
+ * perfil aceso é derivado das opções, não guardado ao lado delas — mexer no
+ * slider cai em "Personalizado" sozinho.
  */
 
 'use client'
@@ -17,6 +23,8 @@ import { Settings2 } from 'lucide-react'
 import { ChipGroup } from '@/components/ui/Chip'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { Slider } from '@/components/ui/Slider'
+import { cn } from '@/lib/cn'
+import { matchProfile, PROFILES } from '@/lib/profiles'
 import type { CompressionMode, CompressionPreset, OutputFormat } from '@/engine/core/types'
 import {
   CUSTOM_TARGET_RANGE,
@@ -50,7 +58,10 @@ const FORMATS = [
 export function OptionsPanel() {
   const options = useQueueStore(selectOptions)
   const setOptions = useQueueStore((state) => state.setOptions)
+  const applyProfile = useQueueStore((state) => state.applyProfile)
   const disabled = useQueueStore(selectPhase) === 'running'
+
+  const active = matchProfile(options)
 
   return (
     <section
@@ -60,6 +71,45 @@ export function OptionsPanel() {
       <div className="flex items-center gap-3">
         <Settings2 size={18} className="text-text-muted" aria-hidden />
         <h2 className="text-h3">Preferências</h2>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <span className="text-eyebrow text-text-muted uppercase">Perfil</span>
+        {/*
+          Botões comuns, não um radiogroup: um perfil não é um valor da
+          configuração, é um atalho que **escreve** vários valores de uma vez.
+          O estado real continua sendo modo, formato e qualidade logo abaixo, e
+          é lá que o teclado navega por setas. `aria-pressed` diz o que está em
+          vigor sem prometer um grupo de escolha que não existe — repare que
+          "Personalizado" não é clicável: ele é o que sobra.
+        */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {PROFILES.map((profile) => {
+            const selected = active?.id === profile.id
+
+            return (
+              <button
+                key={profile.id}
+                type="button"
+                aria-pressed={selected}
+                aria-label={profile.description}
+                disabled={disabled}
+                onClick={() => applyProfile(profile.id)}
+                className={cn(
+                  'h-control-sm text-small rounded-pill px-4 transition-colors',
+                  'disabled:pointer-events-none disabled:opacity-50',
+                  selected
+                    ? 'bg-ink dark:bg-white dark:text-ink font-medium text-white'
+                    : 'border-border text-text-muted hover:text-text border',
+                )}
+              >
+                {profile.label}
+              </button>
+            )
+          })}
+
+          {!active && <span className="text-caption text-text-muted">Personalizado</span>}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-start gap-x-8 gap-y-6">

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { QueueOrchestrator } from '@/engine/core/orchestrator'
 import type { JobPool, PoolRunTask, PoolStats } from '@/engine/core/pool'
-import type { FileMetadata, JobResult } from '@/engine/core/types'
+import type { FileMetadata, JobOptions, JobResult } from '@/engine/core/types'
 import { acceptImage } from '@/engine/image/support'
+import { matchProfile, PROFILES } from '@/lib/profiles'
 import { JobError } from '@/engine/workers/protocol'
 import {
   createQueueStore,
@@ -586,5 +587,106 @@ describe('store da fila — saída', () => {
 
     expect(aborted).toBe(true)
     expect(fake.store.getState().output.phase).toBe('idle')
+  })
+})
+
+/**
+ * As preferências e os perfis.
+ *
+ * A store é o único lugar onde persistência e perfis se encontram, e o que
+ * estes testes prendem é a fronteira: a leitura acontece **uma vez, sob
+ * demanda** (nunca na criação da store, que roda durante a pré-renderização), e
+ * a escrita acontece em toda mudança — sem que nenhuma das duas passe perto do
+ * caminho quente do progresso.
+ */
+describe('store da fila — preferências', () => {
+  function storeComPreferencias(guardadas?: Partial<JobOptions>) {
+    const escritas: JobOptions[] = []
+    const store = createQueueStore({
+      createOrchestrator: (events) =>
+        new QueueOrchestrator({
+          pool: {
+            size: 1,
+            probe: () => Promise.resolve(metadata),
+            run: (task) => {
+              task.onStart?.()
+              return Promise.resolve(jobResult())
+            },
+            stats: () => ({
+              size: 1,
+              active: 0,
+              queued: 0,
+              megapixelsInFlight: 0,
+              megapixelBudget: 96,
+            }),
+            dispose: () => {},
+          },
+          accept: acceptImage,
+          events,
+        }),
+      loadPreferences: () => ({ ...DEFAULT_OPTIONS, ...guardadas }),
+      savePreferences: (options) => escritas.push(options),
+    })
+
+    return { store, escritas }
+  }
+
+  it('começa nos padrões e só lê o guardado quando mandam', () => {
+    const { store } = storeComPreferencias({ quality: 41 })
+
+    // Criar a store não pode tocar em `localStorage`: ela é criada na
+    // importação do módulo, e o módulo é importado durante a pré-renderização
+    // estática, onde `localStorage` não existe.
+    expect(store.getState().options).toEqual(DEFAULT_OPTIONS)
+
+    store.getState().hydratePreferences()
+    expect(store.getState().options.quality).toBe(41)
+  })
+
+  it('persiste toda mudança de preferência', () => {
+    const { store, escritas } = storeComPreferencias()
+
+    store.getState().setOptions({ quality: 70 })
+    store.getState().setOptions({ mode: 'target' })
+
+    expect(escritas).toHaveLength(2)
+    expect(escritas[1]).toMatchObject({ quality: 70, mode: 'target' })
+  })
+
+  it('aplicar um perfil troca as opções inteiras e persiste', () => {
+    const { store, escritas } = storeComPreferencias()
+    const web = PROFILES[0]
+    if (!web) throw new Error('a lista de perfis não pode estar vazia')
+
+    store.getState().setOptions({ customTargetMb: 3 })
+    store.getState().applyProfile(web.id)
+
+    // Substituição, não mesclagem: o `customTargetMb` de antes não pode
+    // sobreviver escondido atrás de um perfil que não o menciona.
+    expect(store.getState().options).toEqual(web.options)
+    expect(matchProfile(store.getState().options)?.id).toBe(web.id)
+    expect(escritas.at(-1)).toEqual(web.options)
+  })
+
+  it('ignora perfil desconhecido em vez de zerar as opções', () => {
+    const { store } = storeComPreferencias()
+    store.getState().setOptions({ quality: 51 })
+
+    store.getState().applyProfile('perfil-que-nao-existe')
+
+    expect(store.getState().options.quality).toBe(51)
+  })
+
+  it('não troca as preferências no meio de um lote', async () => {
+    const { store } = storeComPreferencias({ quality: 41 })
+    store.getState().addFiles([imageFile({ name: 'a.jpg' })])
+
+    const rodando = store.getState().start()
+    store.getState().hydratePreferences()
+    await rodando
+
+    // A hidratação roda na montagem, então isto não deve acontecer — mas se
+    // acontecer, cards do mesmo lote sairiam com configurações diferentes.
+    expect(store.getState().options.quality).toBe(DEFAULT_OPTIONS.quality)
   })
 })

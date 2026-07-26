@@ -32,7 +32,10 @@ import { createImagePool } from '@/engine/workers/spawn'
 import { fileNameOf } from '@/engine/image/naming'
 import type { ZipEntry } from '@/engine/workers/zip-protocol'
 import { createZipArchive, type ArchiveOptions } from '@/lib/archive'
+import { CUSTOM_TARGET_RANGE, DEFAULT_OPTIONS, QUALITY_RANGE } from '@/lib/defaults'
 import { archiveName, downloadBlob } from '@/lib/download'
+import { loadPreferences, savePreferences } from '@/lib/preferences'
+import { profileById } from '@/lib/profiles'
 import {
   saveToDirectory,
   supportsDirectoryPicker,
@@ -107,6 +110,13 @@ export interface QueueState {
   clearQueue(): void
   dismissRejected(): void
   setOptions(patch: Partial<JobOptions>): void
+  /** Aplica um perfil inteiro de uma vez. Ignora id desconhecido. */
+  applyProfile(id: string): void
+  /**
+   * Lê as preferências guardadas. Chamada uma vez, depois da montagem — nunca
+   * durante a pré-renderização, onde `localStorage` não existe.
+   */
+  hydratePreferences(): void
   start(): Promise<void>
   cancelItem(id: string): void
   cancelAll(): void
@@ -117,18 +127,12 @@ export interface QueueState {
   dismissOutput(): void
 }
 
-/** Os mesmos padrões do app Electron — fidelidade é requisito, não detalhe. */
-export const DEFAULT_OPTIONS: JobOptions = {
-  mode: 'auto',
-  preset: 5,
-  outputFormat: 'smart',
-  quality: 82,
-}
-
-/** Faixa aceita pelo campo de meta personalizada, como no app desktop. */
-export const CUSTOM_TARGET_RANGE = { min: 0.1, max: 500 } as const
-/** Faixa do controle de qualidade na UI. O motor clampa em 24–95. */
-export const QUALITY_RANGE = { min: 35, max: 95 } as const
+/**
+ * Reexportados de `lib/defaults.ts`, que é folha e pode ser importado pela
+ * persistência e pelos perfis sem arrastar a store — e a store arrasta o
+ * orquestrador, que arrasta o pool.
+ */
+export { CUSTOM_TARGET_RANGE, DEFAULT_OPTIONS, QUALITY_RANGE }
 
 const EMPTY_STATS: QueueStats = {
   total: 0,
@@ -212,6 +216,8 @@ export interface QueueStoreOptions {
   save?(entries: readonly SaveEntry[], options: SaveOptions): Promise<SaveResult>
   download?(blob: Blob, name: string): void
   canSaveToFolder?(): boolean
+  loadPreferences?(): JobOptions
+  savePreferences?(options: JobOptions): void
 }
 
 export type QueueStore = UseBoundStore<StoreApi<QueueState>>
@@ -226,6 +232,8 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
   const save = options.save ?? saveToDirectory
   const download = options.download ?? downloadBlob
   const canSave = options.canSaveToFolder ?? supportsDirectoryPicker
+  const readPreferences = options.loadPreferences ?? (() => loadPreferences())
+  const writePreferences = options.savePreferences ?? savePreferences
 
   return create<QueueState>((set, get) => {
     let orchestrator: QueueOrchestrator | null = null
@@ -388,7 +396,33 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
       },
 
       setOptions(patch) {
-        set((state) => ({ options: { ...state.options, ...patch } }))
+        set((state) => {
+          const next = { ...state.options, ...patch }
+          // Escrita direta, sem debounce: são ~120 bytes e o `localStorage` só
+          // é tocado quando a pessoa mexe num controle — o caminho quente da
+          // aplicação (progresso dos workers) não passa por aqui.
+          writePreferences(next)
+          return { options: next }
+        })
+      },
+
+      applyProfile(id) {
+        const profile = profileById(id)
+        if (!profile) return
+
+        // O perfil substitui as opções inteiras em vez de mesclar: mesclar
+        // deixaria um `customTargetMb` de uma escolha anterior sobrevivendo
+        // escondido atrás de um perfil que não o menciona.
+        writePreferences(profile.options)
+        set({ options: profile.options })
+      },
+
+      hydratePreferences() {
+        // Trocar as preferências no meio de um lote produziria cards com
+        // configurações diferentes sem explicação. Não deve acontecer — a
+        // hidratação roda na montagem — mas a guarda é barata.
+        if (get().phase === 'running') return
+        set({ options: readPreferences() })
       },
 
       async start() {
