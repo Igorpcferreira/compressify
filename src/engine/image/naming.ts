@@ -9,8 +9,11 @@
  * `webkitRelativePath` e o que o ZIP espera.
  */
 
+import { joinRelativePath, reserveUniquePath, splitPath } from '@/engine/core/naming'
 import type { ImageFormat } from '@/engine/core/types'
 import { extensionForFormat } from './format'
+
+export { joinRelativePath }
 
 export const OUTPUT_SUFFIX = '-compressify'
 
@@ -22,17 +25,8 @@ interface SplitPath {
 }
 
 export function splitRelativePath(relativePath: string): SplitPath {
-  const normalized = relativePath.replace(/\\/g, '/').replace(/^\/+/, '')
-  const slash = normalized.lastIndexOf('/')
-  const dir = slash === -1 ? '' : normalized.slice(0, slash)
-  const base = slash === -1 ? normalized : normalized.slice(slash + 1)
-  const dot = base.lastIndexOf('.')
-  const stem = dot <= 0 ? base : base.slice(0, dot)
+  const { dir, stem } = splitPath(relativePath)
   return { dir, stem }
-}
-
-export function joinRelativePath(dir: string, base: string): string {
-  return dir ? `${dir}/${base}` : base
 }
 
 /**
@@ -43,7 +37,9 @@ export function joinRelativePath(dir: string, base: string): string {
  * o nome **já sufixado**, então a segunda colisão de `foto.jpg` vira
  * `foto-compressify-1.jpg`, não `foto-1-compressify.jpg`.
  *
- * `taken` é mutado — o chamador mantém um único Set por lote.
+ * `taken` é mutado — o chamador mantém um único Set por lote. Dentro de um
+ * worker esse Set é local, então o orquestrador reserva de novo, globalmente,
+ * quando o resultado chega (docs/HANDOFF.md §6).
  */
 export function buildOutputPath(
   relativePath: string,
@@ -51,19 +47,8 @@ export function buildOutputPath(
   taken: Set<string>,
 ): string {
   const { dir, stem } = splitRelativePath(relativePath)
-  const extension = extensionForFormat(format)
-  const baseName = `${stem}${OUTPUT_SUFFIX}`
-
-  let candidate = joinRelativePath(dir, `${baseName}${extension}`)
-  let index = 1
-
-  while (taken.has(candidate.toLowerCase())) {
-    candidate = joinRelativePath(dir, `${baseName}-${index}${extension}`)
-    index += 1
-  }
-
-  taken.add(candidate.toLowerCase())
-  return candidate
+  const baseName = `${stem}${OUTPUT_SUFFIX}${extensionForFormat(format)}`
+  return reserveUniquePath(joinRelativePath(dir, baseName), taken)
 }
 
 /** Nome exibido na UI e usado no download individual — sem o diretório. */
