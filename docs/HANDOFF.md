@@ -3,13 +3,16 @@
 > Documento de continuidade. Quem retomar o Compressify (pessoa ou sessão nova de
 > IA) deve ler **este arquivo primeiro** e só então mergulhar no `PLANO.md`.
 >
-> Última atualização: 26/07/2026, ao fim do **Incremento 7**. O produto está
-> provado: 60 testes E2E comprimem imagens de verdade em Chromium, Firefox e
-> **WebKit** — que nunca tinha sido medido — contra o artefato de deploy.
-> Lighthouse 98 · 100 · 100 · 100 na home. Falta só a documentação (§15).
+> Última atualização: 26/07/2026, ao fim do **Incremento 8 — a Fase 1 está
+> concluída**. O produto comprime, converte, cancela e entrega, provado por 309
+> testes de unidade e 60 E2E em Chromium, Firefox e WebKit. Lighthouse
+> 98 · 100 · 100 · 100 na home.
 >
-> Os Incrementos 3 a 6 já estão comitados. **O Incremento 7 está na árvore, sem
-> commit**, e a mensagem sugerida está em §15.
+> Os Incrementos 3 a 7 estão comitados. **O Incremento 8 está na árvore, sem
+> commit**, e a mensagem sugerida está em §16.
+>
+> **Um critério de aceite continua aberto** (§15): a comparação numérica do modo
+> meta com as saídas do app Electron. É a primeira coisa a fazer.
 
 ---
 
@@ -25,7 +28,7 @@ Estas vieram do brief do Igor e não expiram:
    implementar. O Igor prefere discussão a execução cega — e já mudou de decisão duas
    vezes diante de dados (`image-q`, contrastes do design system).
 4. **Verificar versões antes de fixar dependências.** A data de conhecimento do modelo
-   pode estar defasada. Isso já pegou três armadilhas reais (§11).
+   pode estar defasada. Isso já pegou três armadilhas reais (§12).
 5. **Medir antes de afirmar.** O spike derrubou quatro suposições do plano, duas delas
    minhas. Números > intuição.
 
@@ -45,7 +48,8 @@ c79a7d8  feat(engine): motor de imagem real, com codecs verificados de ponta a p
 0bd318c  feat(engine): concorrência — worker, pool com orçamento de memória e fila
 a6aef39  feat(ui): a fila ganha tela — store, dropzone, cards e preferências
 94023db  feat(saida): download individual, ZIP em worker e salvar em pasta
-         ⬅️ o Incremento 7 está na árvore, **sem commit**, aguardando validação
+a42a1c2  feat(acabamento): landings de SEO, acessibilidade e E2E nos três navegadores
+         ⬅️ o Incremento 8 está na árvore, **sem commit**, aguardando validação
 ```
 
 | Incremento                                       | Estado                                |
@@ -121,10 +125,14 @@ tests/
   integration/engine-codecs.test.ts    6 testes — o motor com os codecs de verdade
   e2e/                                 ◇ 20 testes × 3 navegadores, contra out/
   e2e/fixtures.ts                      ◇ PNGs montados à mão, com marcador
-docs/                                  PLANO, SPIKE, HANDOFF, brand/
+README.md                              ◈ o que é, os números, como rodar
+scripts/serve-out.mjs                  ◇ serve out/ para o E2E e o Lighthouse
+scripts/screenshot.mjs                 ◈ regenera a captura do README
+docs/                                  PLANO, SPIKE, HANDOFF, ARQUITETURA,
+                                       ROADMAP, brand/, imagens/
 ```
 
-`★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6, `◇` o 7.
+`★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6, `◇` o 7, `◈` o 8.
 
 Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/07/2026
 (as seis coincidiram com o que o plano previa):
@@ -711,7 +719,34 @@ como PNG. **Ao trocar de host, confirmar esse cabeçalho.**
 
 ---
 
-## 11. Armadilhas já encontradas — não repetir
+## 11. O Incremento 8 — a documentação
+
+Último incremento, e o único sem código de produto. Quatro entregas:
+
+- **`README.md`** — não existia (o do app Electron saiu no Incremento 1). O novo abre com
+  a afirmação central, mostra a **captura da tela real** nos dois temas, e traz só números
+  medidos: Lighthouse, 175 KB de JavaScript inicial com gzip, 11,4 MB → 1,6 MB num lote de
+  três PNGs, 309 + 60 testes.
+- **`docs/ARQUITETURA.md`** — as camadas e, principalmente, **por que cada fronteira está
+  onde está**. A tese do documento é que toda a separação existe por um motivo só: quase
+  nada disso seria testável se as camadas não tivessem sido separadas na mão.
+- **`docs/ROADMAP.md`** — Fase 2 (PDF) e Fase 3 (vídeo/áudio) a partir do que **já está
+  preparado**, mais o que deliberadamente não entra e por quê.
+- **`scripts/screenshot.mjs`** e os ícones (`icon.svg`, `apple-icon.svg`).
+
+### A captura é gerada, não tirada à mão
+
+`node scripts/screenshot.mjs` sobe o build estático, comprime três fotos de verdade com as
+mesmas fixturas do E2E e fotografa as duas variantes de tema. Existe como script
+versionado porque captura de tela envelhece: quando a interface mudar, é um comando, não um
+print torto.
+
+Os números que aparecem na imagem são reais — 3,8 MB → 535 KB, −86%, em ~380 ms por
+arquivo. Nada de mockup.
+
+---
+
+## 12. Armadilhas já encontradas — não repetir
 
 | Armadilha                     | O que aconteceu                                                                                                                                                                                                                                    |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -733,7 +768,7 @@ como PNG. **Ao trocar de host, confirmar esse cabeçalho.**
 
 ---
 
-## 12. Decisões de produto que já foram fechadas com o Igor
+## 13. Decisões de produto que já foram fechadas com o Igor
 
 Não reabrir sem motivo novo:
 
@@ -755,7 +790,7 @@ Não reabrir sem motivo novo:
 
 ---
 
-## 13. Riscos ainda abertos
+## 14. Riscos ainda abertos
 
 | Risco                                                                                 | Situação                                                                                   |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -782,7 +817,7 @@ ninguém paga, é risco sem retorno. **O gatilho para revisitar é a Fase 3**, q
 
 ---
 
-## 14. Critérios de aceite da Fase 1 — rastreamento
+## 15. Critérios de aceite da Fase 1 — rastreamento
 
 Do brief original, com o estado de cada um:
 
@@ -809,7 +844,7 @@ Do brief original, com o estado de cada um:
 
 ---
 
-## 15. Como retomar
+## 16. Como retomar
 
 ```bash
 cd Compressify
@@ -821,68 +856,56 @@ npm run e2e                # 60 testes nos três motores, contra out/
 npm run dev                # http://localhost:3000
 ```
 
-**Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §11.
+**Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §12.
 
-### O Incremento 8, em uma frase cada
+### A Fase 1 acabou. O que fazer a seguir
 
-É só documentação — o produto está pronto e provado.
+Em ordem de prioridade, e o primeiro item é o único que fecha uma dívida:
 
-- **`README.md`** novo: o que é, por que existe, como roda, com screenshot da tela real e
-  os números medidos (Lighthouse, tamanho do bundle, tempo de lote). O atual ainda
-  descreve o app Electron.
-- **`docs/ARQUITETURA.md`**: o diagrama de `PLANO.md` §1.1 atualizado para o que
-  realmente existe, mais a explicação das quatro camadas — estratégia pura, motor,
-  pool/worker, store — e do porquê cada fronteira é onde é.
-- **`docs/ROADMAP.md`**: Fase 2 (PDF) e Fase 3 (vídeo/áudio) a partir do que já está
-  preparado — o registro de motores resolve por arquivo, e `CompressionEngine` foi
-  mantido genérico exatamente para isso.
-- **Ícones**: `app/icon.svg` e a imagem de Open Graph já entraram no Incremento 7, porque
-  o 404 do favicon estava sujando a medição do Lighthouse. Falta o `apple-icon` e uma
-  varredura de consistência.
-- **O único critério de aceite ainda aberto** (§14): comparar as saídas do modo meta com
-  as do app Electron sobre as mesmas imagens. Precisa das fixturas do desktop, que estão
-  na tag `v1.0.0-electron`.
+1. **Fechar o critério de aceite #2** (§15): comparar numericamente as saídas do modo meta
+   com as do app Electron sobre as mesmas imagens, dentro da banda de ±10% (AVIF
+   excluído). As fixturas do desktop estão na tag `v1.0.0-electron`. É a única promessa do
+   brief que ainda não tem número.
+2. **Deploy.** O `NEXT_PUBLIC_SITE_URL` aponta para `compressify.vercel.app`; ajustar se o
+   domínio for outro, porque três lugares leem essa constante (canônica, sitemap,
+   JSON-LD). Depois do primeiro deploy, **conferir o `Content-Type` da imagem de Open
+   Graph** — ela sai sem extensão na exportação estática (§10).
+3. **As melhorias independentes de fase** listadas em [`ROADMAP.md`](ROADMAP.md), em
+   ordem de retorno por esforço.
+4. **Fase 2 (PDF)** — um `engine/pdf/engine.ts` implementando `CompressionEngine` e uma
+   linha no registro. A fila, o pool, o orçamento, o cancelamento, a nomenclatura e as três
+   saídas funcionam sem alteração.
 
 ### A mensagem de commit sugerida
 
-O Incremento 7 está na árvore, sem commit (`app/{comprimir-imagem,converter-webp,
-converter-avif}`, `app/{sitemap,robots,icon.svg,opengraph-image}`,
-`src/components/landing/`, `src/lib/site.ts`, `playwright.config.ts`,
-`scripts/serve-out.mjs`, `tests/e2e/`, e o job de E2E no CI):
+O Incremento 8 está na árvore, sem commit (`README.md`, `docs/ARQUITETURA.md`,
+`docs/ROADMAP.md`, `docs/imagens/`, `scripts/screenshot.mjs`, `app/apple-icon.svg`):
 
 ```
-feat(acabamento): landings de SEO, acessibilidade e E2E nos três navegadores
+docs: README, arquitetura e roadmap — a Fase 1 fica documentada
 
-O projeto para de afirmar e passa a demonstrar. 60 testes E2E rodam em
-Chromium, Firefox e WebKit contra a exportação estática — o artefato que vai
-para o deploy, não o dev server. É a primeira vez que uma imagem de verdade é
-comprimida dentro de um navegador neste projeto, e o Safari, que nunca tinha
-sido medido, passa em tudo, inclusive AVIF e ZIP.
+O README não existia desde que o do app Electron saiu no Incremento 1. O novo
+abre com a afirmação central do produto, mostra a captura da tela real nos dois
+temas e traz só número medido: Lighthouse 98/100/100/100, 175 KB de JavaScript
+inicial com gzip, 11,4 MB virando 1,6 MB num lote de três PNGs, 309 testes de
+unidade e 60 E2E.
 
-O critério de aceite #3 vira teste: privacy.spec.ts verifica que nenhuma
-requisição sai da origem, que nenhuma tem corpo, e que nem corpo nem URL
-contêm o marcador embutido nos bytes do arquivo de teste. As fixturas são PNGs
-montados à mão, com ruído de fotografia e um chunk tEXt com o marcador — sem
-binário no repositório.
+ARQUITETURA.md descreve as camadas e, principalmente, por que cada fronteira
+está onde está — a tese é que a separação toda existe por um motivo só: quase
+nada disso seria testável se as camadas não tivessem sido separadas na mão.
 
-Lighthouse 98/100/100/100 na home. A primeira medição deu 80 em performance, e
-a causa era o harness: o servidor de teste não comprimia, e a "oportunidade"
-de 378 KB era gzip que a Vercel faz e ele não fazia. Corrigido o servidor, o
-número passou a medir a página.
+ROADMAP.md trata Fase 2 e Fase 3 a partir do que já está preparado, e registra
+o que deliberadamente não entra: conta de usuário, processamento no servidor
+"para arquivos grandes", e analytics.
 
-Três landings de SEO com metadata própria, canônica, Open Graph, FAQ visível e
-o mesmo FAQ em JSON-LD, mais sitemap.xml, robots.txt, favicon e imagem de
-compartilhamento gerada na build — nenhuma function no deploy.
-
-Acessibilidade: link de pulo para a ferramenta, radiogroups com setas em vez
-de abas, range nativo para qualidade, aria-valuenow na barra de progresso, e
-um teste que opera a fila inteira só com o teclado.
+A captura de tela é gerada por scripts/screenshot.mjs, que sobe o build
+estático, comprime três fotos de verdade com as fixturas do E2E e fotografa os
+dois temas. Captura de tela envelhece; com script, atualizá-la é um comando.
 ```
 
-Ordem de leitura para quem chega: este arquivo → `PLANO.md` §3 (as decisões do motor)
-→ `SPIKE.md` §5 (as mitigações medidas) → `src/engine/image/strategy.ts` →
-`src/engine/image/engine.ts` → `src/engine/core/pool.ts` → `src/store/queue.ts` →
-`tests/e2e/privacy.spec.ts`.
+Ordem de leitura para quem chega: `README.md` → **este arquivo** → `ARQUITETURA.md` →
+`PLANO.md` §3 (as decisões do motor) → `SPIKE.md` §5 (as mitigações medidas) →
+`src/engine/image/strategy.ts` → `src/engine/core/pool.ts` → `tests/e2e/privacy.spec.ts`.
 
 O comentário no topo do `strategy.ts` explica por que ele não importa nada — essa
 separação é o que sustenta a testabilidade do projeto inteiro. O `engine.ts` liga os
