@@ -19,7 +19,9 @@ test.describe('fila de compressão', () => {
 
     await page.locator(FILE_INPUT).setInputFiles(fixtureFiles(3))
 
-    const cards = page.getByRole('listitem')
+    // Escopado na fila: a grade "Todas as conversões" no fim da página também é
+    // uma lista, e contar `listitem` na página inteira contaria os links dela.
+    const cards = page.getByRole('region', { name: 'Fila de arquivos' }).getByRole('listitem')
     await expect(cards).toHaveCount(3)
     // `exact` porque o resumo convive com uma região `aria-live` que diz
     // "0 de 3 arquivos concluídos" — as duas contêm "3 arquivos".

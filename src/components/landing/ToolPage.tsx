@@ -15,7 +15,7 @@
 import type { ReactNode } from 'react'
 import { Logo } from '@/components/brand/Logo'
 import { PrivacyBadge } from '@/components/brand/PrivacyBadge'
-import { QueueWorkspace } from '@/components/queue/QueueWorkspace'
+import { QueueWorkspace, type QueueWorkspaceProps } from '@/components/queue/QueueWorkspace'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 export interface FaqItem {
@@ -30,6 +30,10 @@ export interface ToolPageProps {
   plainTitle: string
   description: string
   faq?: readonly FaqItem[]
+  /** O par que a página já escolheu, quando ela é uma landing de conversão. */
+  conversion?: QueueWorkspaceProps['conversion']
+  /** Uma frase abaixo do herói: o que esta conversão faz com os pixels. */
+  highlight?: string
   children?: ReactNode
 }
 
@@ -40,7 +44,15 @@ const NAV = [
   { href: '/converter-avif/', label: 'AVIF' },
 ]
 
-export function ToolPage({ title, plainTitle, description, faq, children }: ToolPageProps) {
+export function ToolPage({
+  title,
+  plainTitle,
+  description,
+  faq,
+  conversion,
+  highlight,
+  children,
+}: ToolPageProps) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-6">
       {/*
@@ -80,10 +92,19 @@ export function ToolPage({ title, plainTitle, description, faq, children }: Tool
           </h1>
 
           <p className="text-text-muted max-w-prose text-pretty">{description}</p>
+
+          {highlight ? (
+            <p className="border-border bg-surface-raised rounded-block text-small text-text max-w-prose text-pretty border px-5 py-3">
+              {highlight}
+            </p>
+          ) : null}
         </div>
 
         <section id="ferramenta" aria-label={plainTitle} className="scroll-mt-6">
-          <QueueWorkspace />
+          {/* `exactOptionalPropertyTypes`: passar `conversion={undefined}` não é
+              o mesmo que não passar. Espalhar o objeto só quando ele existe é o
+              que mantém a prop verdadeiramente opcional. */}
+          <QueueWorkspace {...(conversion ? { conversion } : {})} />
         </section>
 
         {children}

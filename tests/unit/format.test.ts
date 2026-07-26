@@ -3,6 +3,7 @@ import {
   SUPPORTED_INPUT_EXTENSIONS,
   extensionForFormat,
   extensionOf,
+  inputFormatOf,
   isDroppedInput,
   isSupportedInput,
   mimeTypeForFormat,
@@ -76,6 +77,27 @@ describe('resolveOutputFormat — modo original', () => {
   it('cai em JPEG para extensão desconhecida, como no Electron', () => {
     expect(resolveOutputFormat('foto.bmp', 'original')).toBe('jpeg')
     expect(resolveOutputFormat('semextensao', 'original')).toBe('jpeg')
+  })
+})
+
+describe('inputFormatOf', () => {
+  it('reconhece os quatro formatos de entrada, sem depender da caixa', () => {
+    expect(inputFormatOf('foto.JPG')).toBe('jpeg')
+    expect(inputFormatOf('foto.jpeg')).toBe('jpeg')
+    expect(inputFormatOf('arte.png')).toBe('png')
+    expect(inputFormatOf('banner.webp')).toBe('webp')
+    expect(inputFormatOf('still.avif')).toBe('avif')
+    expect(inputFormatOf('pasta/sub/foto.png')).toBe('png')
+  })
+
+  it('devolve null onde `resolveOutputFormat` chutaria JPEG', () => {
+    // A diferença entre as duas funções é o ponto: escolher um formato de saída
+    // exige escolher algum, mas afirmar que um `.bmp` **é** JPG seria a
+    // interface inventando.
+    expect(resolveOutputFormat('scan.bmp', 'original')).toBe('jpeg')
+    expect(inputFormatOf('scan.bmp')).toBeNull()
+    expect(inputFormatOf('colado')).toBeNull()
+    expect(inputFormatOf('')).toBeNull()
   })
 })
 

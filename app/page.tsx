@@ -6,6 +6,7 @@
  */
 
 import type { Metadata } from 'next'
+import { ConversionLinks } from '@/components/landing/ConversionLinks'
 import { StructuredData } from '@/components/landing/StructuredData'
 import { ToolPage, type FaqItem } from '@/components/landing/ToolPage'
 import { canonical } from '@/lib/site'
@@ -63,7 +64,9 @@ export default function Home() {
         plainTitle="Comprimir imagens"
         description="Em massa, sem limite, sem cadastro e sem marca d’água. Os arquivos são processados dentro do seu navegador e nunca saem do seu computador."
         faq={FAQ}
-      />
+      >
+        <ConversionLinks />
+      </ToolPage>
     </>
   )
 }

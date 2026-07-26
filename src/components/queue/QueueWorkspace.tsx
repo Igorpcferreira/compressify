@@ -9,17 +9,35 @@
 'use client'
 
 import { useEffect } from 'react'
+import type { ImageFormat } from '@/engine/core/types'
 import { useQueueStore } from '@/store/queue'
 import { ActionBar } from './ActionBar'
+import { ConversionBar } from './ConversionBar'
 import { Dropzone } from './Dropzone'
 import { OptionsPanel } from './OptionsPanel'
 import { QueueList } from './QueueList'
 import { RejectedNotice } from './RejectedNotice'
 import { useTitleProgress } from './useTitleProgress'
 
-export function QueueWorkspace() {
+export interface QueueWorkspaceProps {
+  /**
+   * O par que a landing de `/jpg-para-webp` já escolheu por quem chegou nela.
+   *
+   * Chega como prop, e não lido da URL aqui dentro, porque a página é quem sabe
+   * o que promete: o componente não deveria adivinhar o próprio endereço.
+   */
+  conversion?: { from: ImageFormat | null; to: ImageFormat }
+}
+
+export function QueueWorkspace({ conversion }: QueueWorkspaceProps = {}) {
   const addFiles = useQueueStore((state) => state.addFiles)
   const hydratePreferences = useQueueStore((state) => state.hydratePreferences)
+  const applyConversion = useQueueStore((state) => state.applyConversion)
+
+  // Primitivos nas dependências, não o objeto: um literal vindo da página teria
+  // identidade nova a cada render e o efeito voltaria a rodar por nada.
+  const from = conversion?.from ?? null
+  const to = conversion?.to ?? null
 
   /**
    * As preferências entram **depois** da montagem, e é deliberado.
@@ -34,12 +52,17 @@ export function QueueWorkspace() {
    */
   useEffect(() => {
     hydratePreferences()
-  }, [hydratePreferences])
+    // O par da landing vem **depois** da hidratação, e nesta ordem de
+    // propósito: quem entra por "/jpg-para-webp" pediu aquilo agora, e isso
+    // ganha da preferência guardada numa visita anterior.
+    if (to) applyConversion({ from, to })
+  }, [hydratePreferences, applyConversion, from, to])
 
   useTitleProgress()
 
   return (
     <div className="flex flex-col gap-6">
+      <ConversionBar />
       <Dropzone onFiles={addFiles} />
       <RejectedNotice />
       <OptionsPanel />

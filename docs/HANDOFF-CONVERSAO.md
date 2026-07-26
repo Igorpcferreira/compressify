@@ -5,12 +5,15 @@
 > [`PLANO-CONVERSAO.md`](PLANO-CONVERSAO.md) (o estudo que justifica as decisões) e só
 > então [`HANDOFF.md`](HANDOFF.md) (o estado geral do projeto).
 >
-> Escrito em 26/07/2026. **O Incremento 13 está feito** (§5) — o modo "Converter" está no
-> ar, com 20 testes novos e um E2E nos três navegadores. O próximo é o **Incremento 14**
-> (§6). O 15 continua sendo decisão para depois do 14.
+> Escrito em 26/07/2026. **Os Incrementos 13 e 14 estão feitos** — o modo "Converter" (§5)
+> e as doze landings "X para Y" com o seletor de par (§6). O que resta desta frente é o
+> **Incremento 15** (§7), que é uma decisão do Igor antes de ser código: 14 MB de
+> WebAssembly, um segundo motor e uma licença nova.
 >
-> **Uma correção ao estudo, medida:** o `@jsquash/avif` 2.1.1 **tem** modo sem perda, e ele
-> é bit-exato. A decisão nº 5 do §4 estava errada e foi corrigida onde aparece.
+> **Duas correções ao estudo, ambas medidas:** o `@jsquash/avif` 2.1.1 **tem** modo sem
+> perda e ele é bit-exato (decisão nº 5 do §4); e o AVIF **sem perda** sai **maior** que o
+> PNG — +45% numa foto, +515% em arte chapada —, o que muda o que duas landings podem
+> prometer (§6).
 
 ---
 
@@ -23,12 +26,18 @@ Vamos continuar o Compressify. Leia docs/HANDOFF-CONVERSAO.md primeiro — ele �
 roteiro desta frente e diz o que já está decidido. Depois leia
 docs/PLANO-CONVERSAO.md (o estudo) e docs/HANDOFF.md (o estado do projeto).
 
-Implemente o Incremento 14 — a interface "X para Y", com as landings por par de
-formatos. O escopo está no §6 deste arquivo e no §6 do PLANO-CONVERSAO.
+Os Incrementos 13 e 14 estão feitos. Antes de escrever qualquer código do
+Incremento 15, resolva os cinco pontos de atrito do §5 do PLANO-CONVERSAO e me
+mostre a conclusão — inclusive a licença do ImageMagick.
 
 Você tem autorização para commitar e dar push sem me perguntar. Rode
 `npm run check` e o E2E antes de cada commit.
 ```
+
+**O Incremento 15 não deve começar sem decisão.** Ele traz 14 MB de WebAssembly, um
+segundo motor de imagem e uma licença que exige atribuição — as três coisas são
+irreversíveis na prática depois de publicadas. O §7 diz o que precisa estar resolvido
+antes.
 
 ---
 
@@ -57,10 +66,10 @@ As outras continuam valendo, e são o que faz este projeto ser o que é:
 ```bash
 cd Compressify
 npm install
-npm run check              # 368 testes, ~50 s
+npm run check              # 389 testes, ~50 s
 npm run build              # exportação estática + service worker
 npx playwright install     # uma vez
-npm run e2e                # 100 testes em Chromium, Firefox e WebKit
+npm run e2e                # 115 testes em Chromium, Firefox e WebKit
 npm run dev                # http://localhost:3000
 ```
 
@@ -241,21 +250,99 @@ junto — ele agora protege contra alguém reintroduzir uma cópia local.
 
 ---
 
-## 6. Incremento 14 — a interface "X para Y"
+## 6. Incremento 14 — a interface "X para Y" ✅ **feito**
 
-Detalhe completo no [`PLANO-CONVERSAO.md` §6](PLANO-CONVERSAO.md). Em resumo:
+Sem dependência nova, como previsto. Doze landings geradas, um seletor de par no topo da
+ferramenta, e o sitemap saindo da mesma lista que gera as rotas.
 
-- Seletor origem → destino no topo, com busca, no padrão dos prints do Convertio
-- Cada par vira landing gerada (`/jpg-para-webp`, `/png-para-avif`…), reusando `ToolPage`
-  e `StructuredData` — a máquina de SEO já existe e o sitemap é gerado na build
-- **Cuidado:** o seletor de origem filtra a exibição, não o motor. Quem arrastar um PNG
-  numa página de "JPG para WebP" não pode ser recusado sem explicação
+### 6.1 O que mudou, arquivo por arquivo
 
-Ainda sem dependência nova.
+| Arquivo                                      | Mudança                                                                    |
+| -------------------------------------------- | -------------------------------------------------------------------------- |
+| `src/lib/conversions.ts`                     | **Novo.** O catálogo dos doze pares e o texto de cada um — módulo folha    |
+| `app/[conversao]/page.tsx`                   | **Novo.** As doze landings, via `generateStaticParams`                     |
+| `src/components/landing/ConversionLinks.tsx` | **Novo.** A grade de links que impede as landings de nascerem órfãs        |
+| `src/components/queue/ConversionBar.tsx`     | **Novo.** O seletor "de X para Y"                                          |
+| `src/engine/image/format.ts`                 | `inputFormatOf` — o formato da entrada, ou `null` quando não dá para dizer |
+| `src/store/queue.ts`                         | `sourceFormat`, `applyConversion`, `setSourceFormat` e `stats.foreign`     |
+| `src/components/queue/QueueWorkspace.tsx`    | Aceita o par da landing e o aplica depois da hidratação                    |
+| `src/components/landing/ToolPage.tsx`        | Repassa o par e ganha a faixa de destaque                                  |
+| `app/sitemap.ts` · `app/page.tsx`            | As doze entradas e a grade de links na home                                |
+| `scripts/gerar-sw.mjs`                       | Decodifica o caminho do chunk e tira as landings do casco — §6.4           |
+
+### 6.2 Três decisões que valem discussão
+
+**1. O seletor não tem campo de busca, e são `<select>` nativos.** O padrão dos prints tem
+busca porque lista 300 formatos; aqui são quatro. Uma caixa de busca sobre quatro opções é
+cerimônia — e o `select` nativo já faz busca por digitação, além de trazer teclado, leitor
+de tela e o seletor de rolagem do celular sem uma linha de ARIA. Quando o Incremento 15
+trouxer 247 formatos de entrada, aí um combobox com busca se paga; escrevê-lo agora seria
+resolver hoje um problema que ainda não existe.
+
+**2. A origem não filtra o motor — ela conta.** Quem chega por `/jpg-para-webp` e arrasta
+um PNG tem o PNG convertido do mesmo jeito. O que a origem faz é alimentar
+`stats.foreign`, e a barra diz _"2 arquivos da fila não são JPG. Eles serão convertidos do
+mesmo jeito."_ Sem essa linha, a escolha de origem seria decorativa; com uma recusa, seria
+uma escolha de vitrine virando regra de negócio. Há E2E para os dois lados.
+
+**3. A contagem do que destoa é estado, não seletor.** Ela é calculada dentro do `tally`,
+que já roda quando um job entra, sai ou termina — nunca a cada 1% de progresso. Um seletor
+que percorresse `items` para contar assinaria o mapa inteiro e faria a barra repintar
+dezenas de vezes por segundo, que é exatamente o que a store existe para evitar.
+
+### 6.3 O texto das landings é gerado, e mesmo assim é diferente em cada uma
+
+Doze páginas escritas à mão divergiriam na primeira correção; doze páginas com o mesmo
+texto e o nome trocado são páginas-porta, e buscador ignora com razão. A saída foi gerar o
+texto **a partir do que cada formato faz com os pixels** — e isso é de fato diferente por
+par:
+
+| Par                  | O que a página promete                                                  |
+| -------------------- | ----------------------------------------------------------------------- |
+| `jpg-para-png`       | sem perda, e **maior**, porque o JPG já tinha jogado informação fora    |
+| `png-para-webp`      | sem perda, e **menor**: −29% numa foto, −78% em arte chapada (medido)   |
+| `png-para-avif`      | sem perda, e **maior**, porque o lossless do AVIF não compete com o PNG |
+| qualquer `-para-jpg` | **não** é sem perda; qualidade máxima, e a página diz isso              |
+
+A medição que reordenou duas dessas linhas, feita com os codecs de produção sobre 800×600:
+
+| Origem       | PNG    | WebP sem perda | AVIF sem perda |
+| ------------ | ------ | -------------- | -------------- |
+| foto         | 728 KB | 516 KB (−29%)  | 1058 KB (+45%) |
+| arte chapada | 1 KB   | 0,3 KB (−78%)  | 5 KB (+515%)   |
+
+Ou seja: **"AVIF é o mais eficiente" é verdade no modo com perda e falso no sem perda.**
+Prometer arquivo menor em `/png-para-avif` teria sido uma mentira medível — a página manda
+quem quer economizar espaço para o modo Auto.
+
+### 6.4 Duas armadilhas que o build encontrou
+
+**O chunk da rota dinâmica tem colchetes no nome.** O webpack emite
+`_next/static/chunks/app/[conversao]/page-<hash>.js` e o HTML o referencia percent-encoded
+(`%5Bconversao%5D`). O `scripts/gerar-sw.mjs` conferia a existência do arquivo com a URL
+crua e abortou o build. Corrigido com `decodeURIComponent` na conferência; a URL entra no
+precache como está, porque é ela que o navegador pede.
+
+**As doze landings ficaram fora do casco do service worker.** Incluí-las inflava o
+precache de 832 KB para 1,4 MB — +68% na primeira visita — para guardar onze páginas que
+quem chegou pela home não vai abrir. É a mesma regra dos `.wasm`, aplicada a documentos:
+elas entram no cache **quando visitadas**, porque a navegação é rede-primeiro e grava o que
+carregou. O casco final ficou em **855 KB**.
+
+### 6.5 Definição de pronto — conferida
+
+- [x] As doze landings existem, com título, `h1` único, canônica e JSON-LD próprios
+- [x] O sitemap as inclui, e sai da mesma lista que gera as rotas (teste de unidade)
+- [x] Nenhuma é órfã: a home e cada landing apontam para as outras
+- [x] O E2E navega numa delas, converte, e confere o cabeçalho do arquivo baixado
+- [x] Quem chega com o formato "errado" é avisado, nunca recusado
+- [x] `npm run check` verde (389 testes); E2E verde nos três navegadores (115 testes)
+- [x] Custo medido: **+946 bytes** com gzip no bundle inicial, e as landings carregam
+      exatamente os mesmos 9 scripts da home — nenhum JavaScript novo por página
 
 ---
 
-## 7. Incremento 15 — `magick-wasm` (decidir depois do 14)
+## 7. Incremento 15 — `magick-wasm` (a decisão, agora)
 
 O salto de capacidade: HEIC, RAW (CR2, ARW, DNG), TIFF, PSD, ICO, DICOM na entrada; TIFF,
 BMP, ICO, GIF, JXL na saída. **273 formatos, 247 lendo, 190 escrevendo** — medido, não
@@ -269,6 +356,12 @@ Cinco pontos de atrito estão detalhados no [`PLANO-CONVERSAO.md` §5](PLANO-CON
 **precisam ser resolvidos antes de integrar**: o `probe` que não lê 247 cabeçalhos, o
 orçamento calibrado para quatro formatos, os dois motores convivendo, o bundler que já
 trava com wasm multi-thread, e a licença do ImageMagick.
+
+**O que mudou agora que o 14 está no ar:** o argumento do estudo era esperar as landings
+para saber se a busca por conversão existe. Elas existem, mas **o site ainda não foi
+publicado** — sem deploy não há dado de busca, e sem dado o Incremento 15 seria decidido
+pela mesma intuição que o §7 do estudo pedia para evitar. A ordem que isso sugere é
+**deploy → observar → decidir o 15**, e não 14 → 15.
 
 Este incremento resolve sozinho a decisão nº 5 do [`HANDOFF.md` §13](HANDOFF.md) — _"TIFF
 está fora, não há decoder"_. Passa a haver.
@@ -308,13 +401,15 @@ Incremento 15 ser decidido.
 
 Somam-se às do [`HANDOFF.md` §12](HANDOFF.md), que continuam valendo.
 
-| Armadilha                             | O que acontece                                                                                                                        |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| ~~Lista fechada em `preferences.ts`~~ | **Resolvida na estrutura** (§5.5): a lista virou fonte única em `types.ts` e o tipo deriva dela                                       |
-| ~~Badge verde com número positivo~~   | **Resolvido** (§5.4): âmbar quando cresce, com o mesmo arredondamento do texto                                                        |
-| **"Sem perda" no JPEG**               | JPEG não tem modo sem perda, e nunca terá. O AVIF tem — isso foi medido (§5.3). Prometer o do JPEG na UI é mentira verificável        |
-| **`exact: 1` no WebP**                | Tirar a flag "economiza" ~6% de bytes e quebra a promessa nos pixels transparentes. Há teste de integração que cai se alguém tentar   |
-| **Texto de UI no `getByText` do E2E** | A home tem "Entrada em JPG, PNG, WebP e AVIF" nas landings; um `getByText` largo casa com dois elementos. Escopar pela região resolve |
-| **Buffer do `setInputFiles`**         | O teto de 50 MB do Playwright é sobre a transferência em base64, não sobre os bytes. A mensagem de erro não diz isso                  |
-| **`magick-wasm` está em 0.0.x**       | API pode mudar entre versões de correção. Fixar versão exata, como o projeto já faz com todas as outras                               |
-| **Precache do service worker**        | `scripts/gerar-sw.mjs` exclui `.wasm` de propósito. Se alguém "consertar" isso, o primeiro acesso passa a baixar 14 MB                |
+| Armadilha                             | O que acontece                                                                                                                                                                    |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~Lista fechada em `preferences.ts`~~ | **Resolvida na estrutura** (§5.5): a lista virou fonte única em `types.ts` e o tipo deriva dela                                                                                   |
+| ~~Badge verde com número positivo~~   | **Resolvido** (§5.4): âmbar quando cresce, com o mesmo arredondamento do texto                                                                                                    |
+| **"Sem perda" no JPEG**               | JPEG não tem modo sem perda, e nunca terá. O AVIF tem — isso foi medido (§5.3). Prometer o do JPEG na UI é mentira verificável                                                    |
+| **`exact: 1` no WebP**                | Tirar a flag "economiza" ~6% de bytes e quebra a promessa nos pixels transparentes. Há teste de integração que cai se alguém tentar                                               |
+| **Texto de UI no `getByText` do E2E** | A home tem "Entrada em JPG, PNG, WebP e AVIF" nas landings; um `getByText` largo casa com dois elementos. Escopar pela região resolve                                             |
+| **Buffer do `setInputFiles`**         | O teto de 50 MB do Playwright é sobre a transferência em base64, não sobre os bytes. A mensagem de erro não diz isso                                                              |
+| **`getByRole('listitem')` amplo**     | A grade "Todas as conversões" é uma `<ul>`: contar itens de lista na página inteira passou a contar os links. Escopar pela região da fila                                         |
+| **Chunk com colchete no nome**        | A rota `app/[conversao]` emite um diretório com colchetes, referenciado percent-encoded no HTML. Quem for ler URL do HTML e tocar em disco precisa de `decodeURIComponent` (§6.4) |
+| **`magick-wasm` está em 0.0.x**       | API pode mudar entre versões de correção. Fixar versão exata, como o projeto já faz com todas as outras                                                                           |
+| **Precache do service worker**        | `scripts/gerar-sw.mjs` exclui `.wasm` **e as landings de par** de propósito (§6.4). Se alguém "consertar" isso, o casco vai de 855 KB para 1,4 MB — e para 14 MB com o `magick`   |

@@ -24,6 +24,7 @@ function seed(patch: Partial<QueueItem>, mode = DEFAULT_OPTIONS.mode): void {
     id: ID,
     path: 'foto.jpg',
     name: 'foto.jpg',
+    format: 'jpeg',
     status: 'success',
     percent: 100,
     originalBytes: 760_000,

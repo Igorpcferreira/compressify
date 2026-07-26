@@ -30,6 +30,10 @@ uma delas levar um byte do arquivo do usuário.
   tudo para WebP e mantém AVIF como AVIF. No modo converter, PNG, WebP e AVIF saem **sem
   perda de verdade** — os pixels voltam byte a byte, e há teste que compara um a um. JPEG
   não tem modo sem perda, sai na qualidade máxima, e a interface diz isso.
+- **Uma página por par de formatos** — `/jpg-para-webp`, `/png-para-avif` e mais dez — com
+  o destino já escolhido ao abrir. Cada uma diz o que aquela conversão específica faz com
+  o arquivo, inclusive quando ele **cresce**, que é o caso normal de converter para um
+  formato mais fiel.
 - **Três saídas:** baixar um arquivo, baixar o lote em `.zip`, ou salvar direto numa pasta
   do disco onde o navegador oferece a File System Access API.
 - **Pastas inteiras**, com a estrutura de subpastas preservada na saída.
@@ -58,7 +62,7 @@ como metadado, é **aplicada aos pixels**, então a foto em pé sai em pé.
 | Lote de 3 PNGs de 1600×1200     | 11,4 MB → 1,6 MB (**−86%**), ~400 ms por arquivo no Chromium                      |
 | Quantizador de PNG, 12 MP       | 92 ms                                                                             |
 | Paridade com o app desktop      | **±0,4%** no modo meta, contra o Electron/`sharp` sobre os mesmos bytes           |
-| Testes                          | 368 de unidade e integração + 100 E2E em Chromium, Firefox e WebKit               |
+| Testes                          | 389 de unidade e integração + 115 E2E em Chromium, Firefox e WebKit               |
 
 O Lighthouse é medido contra `out/` servido com gzip, como a Vercel serve — medir sem
 compressão reprova o harness, não a página. O número já foi **98** numa máquina em
@@ -76,9 +80,9 @@ npm run dev          # http://localhost:3000
 ```
 
 ```bash
-npm run check        # typecheck + lint + formatação + 368 testes
+npm run check        # typecheck + lint + formatação + 389 testes
 npm run build        # exportação estática em out/
-npx playwright install && npm run e2e   # 100 testes nos três navegadores
+npx playwright install && npm run e2e   # 115 testes nos três navegadores
 ```
 
 Requer Node 20.9+. O `npm run build` usa webpack em vez de Turbopack — o motivo está em
@@ -108,7 +112,7 @@ Quatro fronteiras, cada uma escolhida para deixar o lado de dentro testável:
 | Concorrência | `engine/core/pool.ts`      | recebe uma fábrica de workers                                 |
 | Fila         | `store/queue.ts`           | recebe uma fábrica de orquestrador                            |
 
-É por isso que 344 dos 368 testes rodam sem carregar um byte de WebAssembly, e
+É por isso que 365 dos 389 testes rodam sem carregar um byte de WebAssembly, e
 a concorrência inteira — orçamento de memória, cancelamento com worker travado,
 retentativa — é exercitada em Node. O E2E fecha por fora: o que as fronteiras permitiram
 testar isolado, ele prova junto, num navegador de verdade.

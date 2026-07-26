@@ -3,9 +3,10 @@
 > Documento de continuidade. Quem retomar o Compressify (pessoa ou sessão nova de
 > IA) deve ler **este arquivo primeiro** e só então mergulhar no `PLANO.md`.
 >
-> Última atualização: 26/07/2026, ao fim do **Incremento 13** — o primeiro da
-> frente de conversão. A Fase 1 está concluída e as melhorias independentes de
-> fase também: 368 testes de unidade e 100 E2E em Chromium, Firefox e WebKit.
+> Última atualização: 26/07/2026, ao fim do **Incremento 14** — a frente de
+> conversão fechada até onde ela vai sem dependência nova. A Fase 1 está
+> concluída e as melhorias independentes de fase também: **389 testes de unidade
+> e 115 E2E** em Chromium, Firefox e WebKit.
 >
 > Tudo está comitado e publicado em `origin/main`.
 >
@@ -18,11 +19,14 @@
 > Incrementos 9 a 12 (§17). O que resta antes da Fase 2 é **o deploy** — e a
 > conferência do `Content-Type` da imagem de Open Graph depois dele (§10).
 >
-> **A frente de conversão começou.** O **Incremento 13** — o modo "Converter",
-> sem comprimir — está feito (§21). O estudo de viabilidade está em
+> **A frente de conversão está entregue até onde não custa dependência.** O
+> **Incremento 13** (o modo "Converter", §21) e o **14** (as doze landings "X
+> para Y" e o seletor de par, §22) estão feitos. O estudo está em
 > [`PLANO-CONVERSAO.md`](PLANO-CONVERSAO.md) e o roteiro, em
 > [`HANDOFF-CONVERSAO.md`](HANDOFF-CONVERSAO.md) — que é o arquivo a ler primeiro
-> se a sessão for sobre conversão. O próximo é o Incremento 14.
+> se a sessão for sobre conversão. O que resta é o **Incremento 15**
+> (`magick-wasm`), que é decisão antes de ser código: 14 MB de WebAssembly, um
+> segundo motor e uma licença nova.
 >
 > ⚠️ **A regra nº 1 do §1 está revogada:** o Igor autorizou commit e push sem
 > pedir autorização a cada vez (26/07/2026).
@@ -85,11 +89,12 @@ a42a1c2  feat(acabamento): landings de SEO, acessibilidade e E2E nos três naveg
 | **11 — Antes/depois e progresso na aba**     | ✅ **concluído · §19**                |
 | **12 — PWA, uso offline e a prova do EXIF**  | ✅ **concluído · §20**                |
 | **13 — O modo "Converter", sem comprimir**   | ✅ **concluído · §21**                |
+| **14 — As landings "X para Y"**              | ✅ **concluído · §22**                |
 
-`npm run check` (typecheck + lint + formatação + 368 testes) passa limpo em ~50 s — dos
+`npm run check` (typecheck + lint + formatação + 389 testes) passa limpo em ~50 s — dos
 quais ~20 s são a comparação com o app Electron (§17), que roda com os codecs WASM **e**
 o `sharp` nativo.
-`npm run e2e` roda 100 testes em Chromium, Firefox e WebKit em ~1,5 min — exige
+`npm run e2e` roda 115 testes em Chromium, Firefox e WebKit em ~1,5 min — exige
 `npx playwright install` e um `npm run build` antes.
 `npm run paridade` reescreve [`COMPARACAO-ELECTRON.md`](COMPARACAO-ELECTRON.md) a partir
 da medição.
@@ -103,6 +108,7 @@ app/
   layout.tsx          fontes via next/font (auto-hospedadas), metadata, ThemeScript
   page.tsx            ▲ a home
   comprimir-imagem/ · converter-webp/ · converter-avif/   ◇ landings de SEO
+  [conversao]/page.tsx  ◑ as doze landings "X para Y", geradas na build
   sitemap.ts · robots.ts · icon.svg · opengraph-image.tsx ◇ gerados na build
   manifest.ts         ○ o manifesto do app instalável
   globals.css         design system inteiro em @theme + camada semântica de tema
@@ -119,6 +125,7 @@ src/
   lib/defaults.ts                      ◈◈ padrões e faixas — módulo folha
   lib/preferences.ts                   ◈◈ localStorage validado campo a campo
   lib/profiles.ts                      ◈◈ web · e-mail · impressão
+  lib/conversions.ts                   ◑ os doze pares e o texto de cada um
   store/queue.ts                       ▲ a store Zustand ligada ao orquestrador
   lib/files.ts                         ▲ drop de pastas, varredura recursiva, colar
   lib/cn.ts                            ▲ junção de classes, 12 linhas
@@ -126,7 +133,7 @@ src/
   lib/archive.ts                       ● conversa com o worker de ZIP
   lib/fsAccess.ts                      ● salvar numa pasta, quando o navegador deixa
   lib/site.ts                          ◇ a URL canônica, numa fonte só
-  components/landing/                  ◇ ToolPage · StructuredData
+  components/landing/                  ◇ ToolPage · StructuredData · ◑ ConversionLinks
   engine/core/types.ts                 contratos (CompressionEngine, JobResult…)
   engine/core/registry.ts              resolve o motor por arquivo
   engine/core/naming.ts                ◆ unicidade de caminho, genérica
@@ -155,8 +162,10 @@ tests/
   helpers/codecs-node.ts               inicializa os codecs reais em Node
   helpers/workers.ts                   ◆ workers de mentira, dirigidos pelo teste
   helpers/electron-reference.ts        ◇◇ o pipeline do desktop, transcrito
-  unit/                                344 testes — lógica, com codecs injetados
+  unit/                                365 testes — lógica, com codecs injetados
   unit/file-card.test.tsx              ◐ a cor do badge e o verbo do card
+  unit/conversions.test.ts             ◑ o catálogo e o texto das landings
+  unit/sitemap.test.ts                 ◑ sitemap e rotas saem da mesma lista
   integration/engine-codecs.test.ts    6 testes — o motor com os codecs de verdade
   integration/convert-lossless.test.ts ◐ 5 testes — a ida e volta sem perda, pixel a pixel
   integration/electron-parity.test.ts  ◇◇ 9 testes — os dois produtos lado a lado
@@ -166,6 +175,7 @@ tests/
   e2e/preferencias.spec.ts             ◈◈ persistência e perfis num navegador
   e2e/comparar.spec.ts                 ◆◆ o <dialog> e o título da aba
   e2e/offline.spec.ts                  ○ comprime sem rede
+  e2e/conversao.spec.ts                ◑ as landings de par num navegador
 README.md                              ◈ o que é, os números, como rodar
 scripts/serve-out.mjs                  ◇ serve out/ para o E2E e o Lighthouse
 scripts/screenshot.mjs                 ◈ regenera a captura do README
@@ -176,7 +186,7 @@ docs/                                  PLANO, SPIKE, HANDOFF, ARQUITETURA,
 ```
 
 `★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6, `◇` o 7, `◈` o 8,
-`◇◇` o 9, `◈◈` o 10, `◆◆` o 11, `○` o 12 e `◐` o 13.
+`◇◇` o 9, `◈◈` o 10, `◆◆` o 11, `○` o 12, `◐` o 13 e `◑` o 14.
 
 Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/07/2026
 (as seis coincidiram com o que o plano previa):
@@ -945,7 +955,7 @@ Ordem de leitura para quem chega: `README.md` → **este arquivo** → `ARQUITET
 
 O comentário no topo do `strategy.ts` explica por que ele não importa nada — essa
 separação é o que sustenta a testabilidade do projeto inteiro. O `engine.ts` liga os
-codecs sem quebrá-la: eles entram por injeção, e é por isso que 344 dos 368 testes
+codecs sem quebrá-la: eles entram por injeção, e é por isso que 365 dos 389 testes
 rodam sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a
 fábrica de workers, e a `store/queue.ts` uma acima ainda. O E2E fecha por fora: o que
 todas essas fronteiras permitiram testar isoladamente, ele prova junto, num navegador.
@@ -1222,3 +1232,76 @@ base64.
 
 Depois da correção: 9 execuções seguidas do teste isolado e duas suítes completas, verdes
 nos três navegadores.
+
+---
+
+## 22. O Incremento 14 — as landings "X para Y"
+
+O Incremento 13 deu ao produto o modo Converter; este deu **endereço** a ele. Doze
+landings geradas (`/jpg-para-webp`, `/png-para-avif`, …), um seletor de par no topo da
+ferramenta, e o sitemap saindo da mesma lista que gera as rotas. Sem dependência nova, e
+sem um byte de JavaScript a mais por página: as doze carregam exatamente os mesmos 9
+scripts da home.
+
+O detalhe está em [`HANDOFF-CONVERSAO.md` §6](HANDOFF-CONVERSAO.md); aqui fica o que
+importa para quem lê o estado do projeto.
+
+### Uma rota dinâmica na raiz, e por que ela não atropela as landings antigas
+
+`app/[conversao]/page.tsx` com `generateStaticParams` e `dynamicParams = false`. Segmento
+literal ganha de segmento dinâmico no roteador, então `/comprimir-imagem` continua sendo a
+página escrita à mão; e como a exportação é estática, o que vai para o deploy são
+exatamente doze diretórios — não existe rota curinga no ar, e um endereço inventado cai no
+404 estático.
+
+### O texto é gerado e mesmo assim é diferente em cada página
+
+Doze arquivos escritos à mão divergiriam na primeira correção. Doze páginas com o mesmo
+texto e o nome trocado são páginas-porta, e buscador as ignora — com razão. A saída foi
+gerar o texto **a partir do que cada formato faz com os pixels**, que é de fato diferente
+por par. E foi ao medir isso que uma intuição caiu:
+
+| Origem 800×600 | PNG    | WebP sem perda | AVIF sem perda |
+| -------------- | ------ | -------------- | -------------- |
+| foto           | 728 KB | 516 KB (−29%)  | 1058 KB (+45%) |
+| arte chapada   | 1 KB   | 0,3 KB (−78%)  | 5 KB (+515%)   |
+
+**"AVIF é o mais eficiente" é verdade no modo com perda e falso no sem perda.** A landing
+de `/png-para-avif` teria prometido um arquivo menor e entregue um 45% maior; agora ela
+diz o contrário e manda quem quer economizar espaço para o modo Auto. Há teste de unidade
+prendendo essa diferença — ela é conteúdo, e conteúdo errado não quebra build nenhum.
+
+### O seletor de origem conta, não filtra
+
+Quem chega por `/jpg-para-webp` e arrasta um PNG tem o PNG convertido do mesmo jeito. A
+origem alimenta `stats.foreign`, e a barra diz _"2 arquivos da fila não são JPG. Eles serão
+convertidos do mesmo jeito."_ Sem essa linha a escolha seria decorativa; com uma recusa,
+seria uma escolha de vitrine virando regra de negócio. Há E2E para os dois lados.
+
+A contagem é calculada dentro do `tally` — que já roda quando um job entra, sai ou termina
+— e **não** num seletor derivado. Um seletor que percorresse `items` assinaria o mapa
+inteiro e faria a barra repintar dezenas de vezes por segundo, desfazendo a invariante do
+§8.
+
+### Duas armadilhas que o build encontrou
+
+1. **O chunk da rota dinâmica tem colchetes no nome.** O HTML o referencia
+   percent-encoded (`%5Bconversao%5D`) e o `scripts/gerar-sw.mjs` conferia a existência do
+   arquivo com a URL crua — o build abortou. Corrigido com `decodeURIComponent` na
+   conferência; a URL vai para o precache como está, porque é ela que o navegador pede.
+2. **As doze landings ficaram fora do casco do service worker.** Incluí-las levava o
+   precache de 832 KB para 1,4 MB (+68% na primeira visita) para guardar onze páginas que
+   quem chegou pela home não vai abrir. Mesma regra dos `.wasm`, aplicada a documentos:
+   elas entram no cache quando visitadas, porque a navegação é rede-primeiro e grava o que
+   carregou. O casco ficou em **855 KB**.
+
+### O que foi verificado
+
+- **389 testes** (21 novos) e **115 E2E** (5 novos × 3 navegadores, menos os que não
+  dependem de navegador). Uma das doze geradas entrou na lista de rotas do `a11y.spec.ts`:
+  elas passam pelas mesmas exigências das escritas à mão.
+- **Bundle inicial:** 182.374 → 183.320 bytes com gzip. **+946 bytes** para o seletor, a
+  store e a grade de links — e as landings não carregam nenhum script a mais que a home.
+- Um teste antigo precisou de ajuste honesto: `getByRole('listitem')` na página inteira
+  passou a contar os links da grade "Todas as conversões", que é uma `<ul>` de verdade. A
+  contagem de cards passou a ser escopada na região "Fila de arquivos".

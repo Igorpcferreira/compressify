@@ -16,6 +16,9 @@ const ROTAS = [
   { path: '/comprimir-imagem/', title: /Comprimir imagem/, h1: /Comprimir imagem/ },
   { path: '/converter-webp/', title: /Converter para WebP/, h1: /Converter para WebP/ },
   { path: '/converter-avif/', title: /Converter para AVIF/, h1: /Converter para AVIF/ },
+  // Uma das doze geradas: elas passam pelas mesmas exigências das escritas à
+  // mão, senão gerar página vira desculpa para gerar página pior.
+  { path: '/jpg-para-webp/', title: /Converter JPG para WebP/, h1: /Converter JPG para WebP/ },
 ]
 
 test.describe('estrutura das páginas', () => {

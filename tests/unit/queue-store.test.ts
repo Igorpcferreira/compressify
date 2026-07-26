@@ -169,6 +169,59 @@ describe('store da fila — execução', () => {
     expect(store.getState().options.outputFormat).toBe(DEFAULT_OPTIONS.outputFormat)
   })
 
+  it('aplica o par da landing: origem, destino e o modo converter', async () => {
+    const { store, runs } = storeWith()
+    store.getState().addFiles([imageFile({ name: 'a.jpg' })])
+
+    store.getState().applyConversion({ from: 'jpeg', to: 'webp' })
+
+    expect(store.getState().options).toMatchObject({ mode: 'convert', outputFormat: 'webp' })
+    expect(store.getState().sourceFormat).toBe('jpeg')
+
+    await store.getState().start()
+    expect(runs[0]?.options).toMatchObject({ mode: 'convert', outputFormat: 'webp' })
+  })
+
+  it('conta o que destoa da origem — e não recusa nada', () => {
+    // A regra do seletor: ele filtra a exibição, não o motor. Um PNG numa
+    // página de "JPG para WebP" entra na fila do mesmo jeito, e a interface
+    // ganha o número para poder dizer isso.
+    const { store } = storeWith()
+    store.getState().applyConversion({ from: 'jpeg', to: 'webp' })
+
+    store
+      .getState()
+      .addFiles([
+        imageFile({ name: 'a.jpg' }),
+        imageFile({ name: 'b.png' }),
+        imageFile({ name: 'c.webp' }),
+      ])
+
+    expect(store.getState().order).toHaveLength(3)
+    expect(store.getState().rejected).toHaveLength(0)
+    expect(store.getState().stats.foreign).toBe(2)
+
+    // Trocar a origem recalcula na hora: a contagem é estado, não seletor.
+    store.getState().setSourceFormat('png')
+    expect(store.getState().stats.foreign).toBe(2)
+
+    store.getState().setSourceFormat(null)
+    expect(store.getState().stats.foreign).toBe(0)
+  })
+
+  it('mantém a contagem de origem coerente quando um item sai da fila', () => {
+    const { store } = storeWith()
+    store.getState().setSourceFormat('jpeg')
+    store.getState().addFiles([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.png' })])
+
+    expect(store.getState().stats.foreign).toBe(1)
+
+    const png = store.getState().order.find((id) => store.getState().items[id]?.name === 'b.png')
+    store.getState().removeItem(png ?? '')
+
+    expect(store.getState().stats.foreign).toBe(0)
+  })
+
   it('leva o modo converter até o orquestrador', async () => {
     // O modo novo não tem caminho próprio na store — e é justamente isso que
     // este teste prende: se um dia alguém filtrar modos aqui, a fila deixaria

@@ -48,6 +48,24 @@ const SEMPRE = ['/manifest.webmanifest', '/icon.svg']
 /** O que nunca deve ser cacheado, nem no precache nem em runtime. */
 const NUNCA = ['/sw.js']
 
+/**
+ * As landings "X para Y" ficam **fora** do casco — só elas, não os chunks que
+ * elas compartilham com o resto do app.
+ *
+ * É a mesma regra dos `.wasm`, aplicada a documentos: são doze páginas, 562 KB
+ * de HTML, e quem chega pela home vai abrir no máximo uma. Precacheá-las
+ * inflaria o casco de 832 KB para 1,4 MB — +68% na primeira visita — para
+ * guardar onze páginas que aquela pessoa não vai ver.
+ *
+ * Elas continuam funcionando offline **depois de visitadas**: a navegação é
+ * rede-primeiro e grava no cache o que carregou, exatamente como o codec entra
+ * no cache quando é usado.
+ *
+ * O padrão é o formato do slug de `lib/conversions.ts` (`jpg-para-webp`). Se
+ * ele mudar lá, muda aqui — e o teste `sw.test.ts` é o que avisa.
+ */
+const FORA_DO_CASCO = /^\/[a-z0-9]+-para-[a-z0-9]+\/$/
+
 async function arquivos(diretorio) {
   const encontrados = []
 
@@ -96,6 +114,12 @@ function referenciasDe(html) {
 const todos = await arquivos(SAIDA)
 const documentos = todos.filter((caminho) => caminho.endsWith('.html'))
 
+/*
+ * As referências saem de **todos** os documentos, inclusive dos que não entram
+ * no casco: o chunk que a landing de conversão compartilha com a home custa
+ * bytes uma vez só, e tê-lo em cache é o que faz a primeira visita a uma dessas
+ * páginas ser rápida. O que fica de fora é o HTML delas, não o que elas usam.
+ */
 const referencias = new Set()
 for (const documento of documentos) {
   for (const url of referenciasDe(await readFile(documento, 'utf8'))) {
@@ -103,14 +127,20 @@ for (const documento of documentos) {
   }
 }
 
-const precache = [...new Set([...documentos.map(paraUrl), ...referencias, ...SEMPRE])]
+const paginas = documentos.map(paraUrl).filter((url) => !FORA_DO_CASCO.test(url))
+
+const precache = [...new Set([...paginas, ...referencias, ...SEMPRE])]
   .filter((url) => !NUNCA.includes(url))
   .sort()
 
 // Uma referência que não existe no disco quebraria o `addAll` inteiro — e um
 // `install` que rejeita deixa o app sem service worker, silenciosamente.
 for (const url of precache) {
-  const caminho = join(SAIDA, url.endsWith('/') ? `${url}index.html` : url)
+  // `decodeURIComponent` porque a rota `app/[conversao]` emite um chunk dentro
+  // de um diretório com colchetes no nome, e o HTML o referencia
+  // percent-encoded (`%5Bconversao%5D`). A URL vai para o precache como está —
+  // é ela que o navegador pede —, mas no disco o diretório tem colchetes.
+  const caminho = join(SAIDA, decodeURIComponent(url.endsWith('/') ? `${url}index.html` : url))
   const existe = await stat(caminho).catch(() => null)
 
   if (!existe) {

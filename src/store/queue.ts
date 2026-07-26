@@ -26,7 +26,8 @@ import {
   type OrchestratorEvents,
   type RunSummary,
 } from '@/engine/core/orchestrator'
-import type { CompressionMode, JobOptions, JobStatus } from '@/engine/core/types'
+import type { CompressionMode, ImageFormat, JobOptions, JobStatus } from '@/engine/core/types'
+import { inputFormatOf } from '@/engine/image/format'
 import { acceptImage } from '@/engine/image/support'
 import { createImagePool } from '@/engine/workers/spawn'
 import { fileNameOf } from '@/engine/image/naming'
@@ -51,6 +52,14 @@ export interface QueueItem {
   path: string
   /** Só o nome, para exibir. */
   name: string
+  /**
+   * O formato de entrada, lido da extensão uma única vez na aceitação.
+   *
+   * `null` quando a extensão não diz — um arquivo colado sem nome, por exemplo.
+   * É informação estática do item: um arquivo não muda de formato no meio da
+   * fila, então recalculá-la a cada render seria trabalho por nada.
+   */
+  format: ImageFormat | null
   status: JobStatus
   percent: number
   originalBytes: number
@@ -87,6 +96,16 @@ export interface QueueStats {
   cancelled: number
   originalBytes: number
   compressedBytes: number
+  /**
+   * Quantos arquivos da fila **não** são do formato de origem escolhido.
+   *
+   * Vive em `stats` — que é estado recalculado quando a fila muda, nunca a cada
+   * 1% de progresso — em vez de num seletor derivado. Um seletor que percorresse
+   * `items` para contar isto assinaria o mapa inteiro e faria a barra repintar
+   * dezenas de vezes por segundo, que é exatamente o que a store existe para
+   * evitar (docs/HANDOFF.md §8).
+   */
+  foreign: number
 }
 
 export type QueuePhase = 'idle' | 'running'
@@ -113,6 +132,20 @@ export interface QueueState {
   output: OutputState
   /** `showDirectoryPicker` existe neste navegador. Falso no Firefox e no Safari. */
   canSaveToFolder: boolean
+  /**
+   * O formato de origem escolhido no seletor "X para Y", ou `null` para
+   * "qualquer um".
+   *
+   * **Ele não filtra o motor, e não pode filtrar.** Quem chega por
+   * `/jpg-para-webp` e arrasta um PNG tem o PNG convertido do mesmo jeito —
+   * recusar seria transformar uma escolha de vitrine em regra de negócio. O que
+   * ele faz é dar contexto à interface e contar o que destoa (`stats.foreign`),
+   * para a fila poder dizer o que vai acontecer em vez de calar.
+   *
+   * Fora de `options` de propósito: nada disto é preferência de compressão, e
+   * `savePreferences` guarda `options` inteiro no `localStorage`.
+   */
+  sourceFormat: ImageFormat | null
 
   addFiles(files: readonly File[]): void
   removeItem(id: string): void
@@ -121,6 +154,15 @@ export interface QueueState {
   setOptions(patch: Partial<JobOptions>): void
   /** Aplica um perfil inteiro de uma vez. Ignora id desconhecido. */
   applyProfile(id: string): void
+  /** Escolhe a origem do seletor "X para Y". `null` é "qualquer formato". */
+  setSourceFormat(format: ImageFormat | null): void
+  /**
+   * O par inteiro de uma vez: origem, destino e o modo converter.
+   *
+   * É o que a landing de `/jpg-para-webp` aplica ao montar, e o que o seletor
+   * dispara quando alguém escolhe um destino.
+   */
+  applyConversion(pair: { from: ImageFormat | null; to: ImageFormat }): void
   /**
    * Lê as preferências guardadas. Chamada uma vez, depois da montagem — nunca
    * durante a pré-renderização, onde `localStorage` não existe.
@@ -151,6 +193,7 @@ const EMPTY_STATS: QueueStats = {
   cancelled: 0,
   originalBytes: 0,
   compressedBytes: 0,
+  foreign: 0,
 }
 
 const FINAL_STATUSES = new Set<JobStatus>(['success', 'warning', 'error', 'cancelled'])
@@ -184,12 +227,18 @@ function isCancellation(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortedError'
 }
 
-function tally(items: Record<string, QueueItem>, order: readonly string[]): QueueStats {
+function tally(
+  items: Record<string, QueueItem>,
+  order: readonly string[],
+  sourceFormat: ImageFormat | null = null,
+): QueueStats {
   const stats: QueueStats = { ...EMPTY_STATS, total: order.length }
 
   for (const id of order) {
     const item = items[id]
     if (!item) continue
+
+    if (sourceFormat && item.format !== sourceFormat) stats.foreign += 1
 
     switch (item.status) {
       case 'success':
@@ -258,7 +307,7 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
         if (!current) return state
 
         const items = { ...state.items, [id]: { ...current, ...patch } }
-        return retally ? { items, stats: tally(items, state.order) } : { items }
+        return retally ? { items, stats: tally(items, state.order, state.sourceFormat) } : { items }
       })
     }
 
@@ -305,6 +354,7 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
               id: job.id,
               path: job.path,
               name: fileNameOf(job.path),
+              format: inputFormatOf(job.path),
               status: 'queued',
               percent: 0,
               originalBytes: job.file.size,
@@ -320,7 +370,7 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
             },
           }
           const order = [...state.order, job.id]
-          return { items, order, stats: tally(items, order) }
+          return { items, order, stats: tally(items, order, state.sourceFormat) }
         })
       },
 
@@ -367,6 +417,7 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
       // Lido uma vez, na criação da store: a capacidade do navegador não muda
       // durante a sessão, e consultá-la em render seria estado escondido.
       canSaveToFolder: canSave(),
+      sourceFormat: null,
 
       addFiles(files) {
         if (files.length === 0) return
@@ -383,7 +434,7 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
           const items = { ...state.items }
           delete items[id]
           const order = state.order.filter((current) => current !== id)
-          return { items, order, stats: tally(items, order) }
+          return { items, order, stats: tally(items, order, state.sourceFormat) }
         })
       },
 
@@ -413,6 +464,31 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
           // aplicação (progresso dos workers) não passa por aqui.
           writePreferences(next)
           return { options: next }
+        })
+      },
+
+      setSourceFormat(format) {
+        // A contagem do que destoa muda junto: ela é estado, não seletor.
+        set((state) => ({
+          sourceFormat: format,
+          stats: tally(state.items, state.order, format),
+        }))
+      },
+
+      applyConversion(pair) {
+        set((state) => {
+          const options: JobOptions = {
+            ...state.options,
+            mode: 'convert',
+            outputFormat: pair.to,
+          }
+          writePreferences(options)
+
+          return {
+            options,
+            sourceFormat: pair.from,
+            stats: tally(state.items, state.order, pair.from),
+          }
         })
       },
 
@@ -574,6 +650,7 @@ export const selectPhase = (state: QueueState): QueuePhase => state.phase
 export const selectOptions = (state: QueueState): JobOptions => state.options
 /** Primitivo de propósito: o card e a barra leem o modo sem assinar as opções. */
 export const selectMode = (state: QueueState): CompressionMode => state.options.mode
+export const selectSourceFormat = (state: QueueState): ImageFormat | null => state.sourceFormat
 export const selectRejected = (state: QueueState): RejectedItem[] => state.rejected
 export const selectOutput = (state: QueueState): OutputState => state.output
 export const selectCanSaveToFolder = (state: QueueState): boolean => state.canSaveToFolder

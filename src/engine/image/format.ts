@@ -39,6 +39,31 @@ export function isDroppedInput(name: string): boolean {
 }
 
 /**
+ * O formato de entrada pela extensão, ou `null` quando não é um dos quatro.
+ *
+ * Diferente de `resolveOutputFormat(name, 'original')`, que devolve `jpeg` para
+ * o que não reconhece — ali o fallback é o comportamento certo (é preciso
+ * escolher **algum** formato de saída), aqui o `null` é a informação: quem
+ * pergunta "que formato é este arquivo?" precisa saber quando não dá para
+ * dizer, senão a interface afirmaria que um `.bmp` é JPG.
+ */
+export function inputFormatOf(name: string): ImageFormat | null {
+  switch (extensionOf(name)) {
+    case '.png':
+      return 'png'
+    case '.webp':
+      return 'webp'
+    case '.avif':
+      return 'avif'
+    case '.jpg':
+    case '.jpeg':
+      return 'jpeg'
+    default:
+      return null
+  }
+}
+
+/**
  * Resolve `smart` e `original` para um formato concreto.
  *
  * - `smart`: converte tudo para WebP, exceto AVIF, que permanece AVIF.
