@@ -8,7 +8,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -19,6 +19,12 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test:run"
   },
   "dependencies": {
+    "@jsquash/avif": "2.1.1",
+    "@jsquash/jpeg": "1.6.0",
+    "@jsquash/oxipng": "2.3.0",
+    "@jsquash/png": "3.1.1",
+    "@jsquash/resize": "2.1.1",
+    "@jsquash/webp": "1.5.0",
     "next": "16.2.12",
     "react": "19.2.8",
     "react-dom": "19.2.8"
