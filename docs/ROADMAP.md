@@ -118,6 +118,29 @@ conexão**, e agora ele de fato não exige — há E2E comprimindo offline.
 
 ---
 
+## Frente nova — conversão de formatos
+
+Aberta em 26/07/2026, ainda sem código. A ideia: além de comprimir, **mudar o formato sem
+comprimir**, no padrão "X para Y" que Convertio e CloudConvert popularizaram.
+
+O que o estudo ([`PLANO-CONVERSAO.md`](PLANO-CONVERSAO.md)) apurou, medindo em vez de
+supor: aqueles catálogos gigantes são o ImageMagick rodando **em servidor**, e as dez
+categorias deles não são replicáveis com a promessa deste projeto. Mas a coluna de imagem
+é — o `@imagemagick/magick-wasm` habilita **273 formatos, 247 lendo e 190 escrevendo**,
+inteiramente no navegador, incluindo HEIC, RAW, TIFF, PSD e DICOM na entrada.
+
+Três incrementos, em ordem de retorno sobre risco:
+
+|     | O quê                                       | Depende de                     |
+| --- | ------------------------------------------- | ------------------------------ |
+| 13  | **Modo "Converter"**, sem comprimir         | nada — só os 4 formatos atuais |
+| 14  | **Interface "X para Y"** + landings geradas | nada                           |
+| 15  | **`magick-wasm`** como motor secundário     | 13,9 MB de wasm, sob demanda   |
+
+O roteiro para começar está em [`HANDOFF-CONVERSAO.md`](HANDOFF-CONVERSAO.md).
+
+---
+
 ## O que não está no roadmap, e por quê
 
 - **Conta de usuário, histórico, sincronização.** Exigiriam servidor, e o servidor é

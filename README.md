@@ -122,6 +122,8 @@ Detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 | [`docs/SPIKE.md`](docs/SPIKE.md)                             | As medições que derrubaram quatro suposições do plano          |
 | [`docs/COMPARACAO-ELECTRON.md`](docs/COMPARACAO-ELECTRON.md) | A paridade com o app desktop, gerada por medição               |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md)                         | Fase 2 (PDF) e Fase 3 (vídeo e áudio)                          |
+| [`docs/PLANO-CONVERSAO.md`](docs/PLANO-CONVERSAO.md)         | Conversão de formatos: o que é viável no cliente, medido       |
+| [`docs/HANDOFF-CONVERSAO.md`](docs/HANDOFF-CONVERSAO.md)     | O roteiro para começar a frente de conversão                   |
 
 ## Origem
 

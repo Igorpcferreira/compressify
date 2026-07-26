@@ -17,6 +17,14 @@
 > **Sete dos oito itens do [`ROADMAP.md`](ROADMAP.md) foram feitos** nos
 > Incrementos 9 a 12 (§17). O que resta antes da Fase 2 é **o deploy** — e a
 > conferência do `Content-Type` da imagem de Open Graph depois dele (§10).
+>
+> **Há uma frente nova aberta, ainda sem código:** conversão de formatos. O
+> estudo de viabilidade está em [`PLANO-CONVERSAO.md`](PLANO-CONVERSAO.md) e o
+> roteiro para começar, em [`HANDOFF-CONVERSAO.md`](HANDOFF-CONVERSAO.md) — que é
+> o arquivo a ler primeiro se a sessão for sobre conversão.
+>
+> ⚠️ **A regra nº 1 do §1 está revogada:** o Igor autorizou commit e push sem
+> pedir autorização a cada vez (26/07/2026).
 
 ---
 
