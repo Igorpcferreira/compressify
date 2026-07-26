@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from 'next/font/google'
+import { RegisterServiceWorker } from '@/components/pwa/RegisterServiceWorker'
 import { ThemeScript } from '@/components/theme/ThemeScript'
 import { SITE_URL } from '@/lib/site'
 import './globals.css'
@@ -64,7 +65,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <ThemeScript />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <RegisterServiceWorker />
+      </body>
     </html>
   )
 }
