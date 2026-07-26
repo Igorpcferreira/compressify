@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   description:
     'Comprima e converta imagens em massa direto no navegador. Sem upload, sem limite, sem cadastro e sem marca d’água — seus arquivos nunca saem do seu computador.',
   applicationName: 'Compressify',
-  authors: [{ name: 'Igor Ferreira' }],
-  creator: 'Igor Ferreira',
+  authors: [{ name: 'Igor de Castro' }],
+  creator: 'Igor de Castro',
   robots: { index: true, follow: true },
   openGraph: { siteName: 'Compressify', locale: 'pt_BR', type: 'website' },
   twitter: { card: 'summary_large_image' },

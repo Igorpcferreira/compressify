@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Compressão e conversão de arquivos em massa, inteiramente no navegador. Nenhum arquivo é enviado para servidor algum.",
-  "author": "Igor Ferreira",
+  "author": "Igor de Castro",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",

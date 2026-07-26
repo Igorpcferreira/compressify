@@ -149,4 +149,4 @@ Sem analytics, sem telemetria, sem script de terceiros. As fontes são auto-hosp
 
 ## Licença
 
-MIT — [Igor Ferreira](https://github.com/Igorpcferreira)
+MIT — [Igor de Castro](https://github.com/Igorpcferreira)
