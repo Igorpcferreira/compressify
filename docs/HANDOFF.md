@@ -3,17 +3,20 @@
 > Documento de continuidade. Quem retomar o Compressify (pessoa ou sessão nova de
 > IA) deve ler **este arquivo primeiro** e só então mergulhar no `PLANO.md`.
 >
-> Última atualização: 26/07/2026, ao fim do **Incremento 8 — a Fase 1 está
-> concluída**. O produto comprime, converte, cancela e entrega, provado por 309
-> testes de unidade e 60 E2E em Chromium, Firefox e WebKit. Lighthouse
-> 98 · 100 · 100 · 100 na home.
+> Última atualização: 26/07/2026, ao fim do **Incremento 12**. A Fase 1 está
+> concluída e as melhorias independentes de fase também: 348 testes de unidade
+> e 97 E2E em Chromium, Firefox e WebKit.
 >
-> Os Incrementos 3 a 8 estão comitados e publicados em `origin/main`.
+> Tudo está comitado e publicado em `origin/main`.
 >
 > **Os 10 critérios de aceite estão fechados** (§15). O último — a comparação
 > numérica do modo meta com o app Electron — foi medido no Incremento 9 e deu
 > **+0,4% no pior caso**, com dois casos idênticos ao byte:
 > [`COMPARACAO-ELECTRON.md`](COMPARACAO-ELECTRON.md).
+>
+> **Sete dos oito itens do [`ROADMAP.md`](ROADMAP.md) foram feitos** nos
+> Incrementos 9 a 12 (§17). O que resta antes da Fase 2 é **o deploy** — e a
+> conferência do `Content-Type` da imagem de Open Graph depois dele (§10).
 
 ---
 
@@ -50,24 +53,36 @@ c79a7d8  feat(engine): motor de imagem real, com codecs verificados de ponta a p
 a6aef39  feat(ui): a fila ganha tela — store, dropzone, cards e preferências
 94023db  feat(saida): download individual, ZIP em worker e salvar em pasta
 a42a1c2  feat(acabamento): landings de SEO, acessibilidade e E2E nos três navegadores
-         ⬅️ o Incremento 8 está na árvore, **sem commit**, aguardando validação
+2dc4f6d  docs: README, arquitetura e roadmap — a Fase 1 fica documentada
+99790f8  test(paridade): o critério de aceite #2 vira número — +0,4% contra o Electron
+1c746c0  feat(preferências): perfis de saída e preferências que sobrevivem à aba
+658bcf6  feat(ui): comparação antes/depois e o progresso do lote no título da aba
+5b645aa  feat(pwa): o app funciona sem rede — e os metadados nunca sobreviveram
 ```
 
-| Incremento                                       | Estado                                |
-| ------------------------------------------------ | ------------------------------------- |
-| 0 — Spike do motor                               | ✅ concluído · [`SPIKE.md`](SPIKE.md) |
-| 1 — Fundação                                     | ✅ concluído                          |
-| 2 — Algoritmo puro + testes                      | ✅ concluído                          |
-| 3 — Motor de imagem real                         | ✅ concluído · 168 testes             |
-| 4 — Worker, pool, cancelamento                   | ✅ concluído · 235 testes             |
-| **5 — Store, fila e UI**                         | ✅ **concluído · 269 testes**         |
-| **6 — Saída: download, ZIP, File System Access** | ⬅️ **próximo**                        |
-| 7 — Acabamento: SEO, modo escuro, a11y, E2E      | pendente                              |
-| 8 — Documentação e ícones                        | pendente                              |
+| Incremento                                   | Estado                                |
+| -------------------------------------------- | ------------------------------------- |
+| 0 — Spike do motor                           | ✅ concluído · [`SPIKE.md`](SPIKE.md) |
+| 1 — Fundação                                 | ✅ concluído                          |
+| 2 — Algoritmo puro + testes                  | ✅ concluído                          |
+| 3 — Motor de imagem real                     | ✅ concluído · 168 testes             |
+| 4 — Worker, pool, cancelamento               | ✅ concluído · 235 testes             |
+| 5 — Store, fila e UI                         | ✅ concluído · 269 testes             |
+| 6 — Saída: download, ZIP, File System Access | ✅ concluído · 309 testes             |
+| 7 — Acabamento: SEO, modo escuro, a11y, E2E  | ✅ concluído · 60 E2E                 |
+| 8 — Documentação e ícones                    | ✅ concluído                          |
+| **9 — Paridade medida com o Electron**       | ✅ **concluído · §17**                |
+| **10 — Perfis e preferências persistidas**   | ✅ **concluído · §18**                |
+| **11 — Antes/depois e progresso na aba**     | ✅ **concluído · §19**                |
+| **12 — PWA, uso offline e a prova do EXIF**  | ✅ **concluído · §20**                |
 
-`npm run check` (typecheck + lint + formatação + 309 testes) passa limpo em ~12 s.
-`npm run e2e` roda 60 testes em Chromium, Firefox e WebKit em ~1 min — exige
+`npm run check` (typecheck + lint + formatação + 348 testes) passa limpo em ~50 s — dos
+quais ~20 s são a comparação com o app Electron (§17), que roda com os codecs WASM **e**
+o `sharp` nativo.
+`npm run e2e` roda 97 testes em Chromium, Firefox e WebKit em ~1,5 min — exige
 `npx playwright install` e um `npm run build` antes.
+`npm run paridade` reescreve [`COMPARACAO-ELECTRON.md`](COMPARACAO-ELECTRON.md) a partir
+da medição.
 `npm run build` gera exportação estática sem nenhuma serverless function — **agora com
 webpack, não Turbopack**. O porquê está na §4.
 
@@ -79,6 +94,7 @@ app/
   page.tsx            ▲ a home
   comprimir-imagem/ · converter-webp/ · converter-avif/   ◇ landings de SEO
   sitemap.ts · robots.ts · icon.svg · opengraph-image.tsx ◇ gerados na build
+  manifest.ts         ○ o manifesto do app instalável
   globals.css         design system inteiro em @theme + camada semântica de tema
 src/
   components/theme/ThemeScript.tsx     resolve o tema antes da primeira pintura
@@ -87,6 +103,12 @@ src/
   components/ui/                       ▲ Button · SegmentedControl · Chip · Slider
   components/queue/                    ▲ Dropzone · FileCard · QueueList · ActionBar
                                          OptionsPanel · RejectedNotice · QueueWorkspace
+  components/queue/CompareDialog.tsx   ◆◆ antes/depois em <dialog> nativo
+  components/queue/useTitleProgress.ts ◆◆ a contagem do lote no título da aba
+  components/pwa/RegisterServiceWorker.tsx  ○ registra o sw, só em produção
+  lib/defaults.ts                      ◈◈ padrões e faixas — módulo folha
+  lib/preferences.ts                   ◈◈ localStorage validado campo a campo
+  lib/profiles.ts                      ◈◈ web · e-mail · impressão
   store/queue.ts                       ▲ a store Zustand ligada ao orquestrador
   lib/files.ts                         ▲ drop de pastas, varredura recursiva, colar
   lib/cn.ts                            ▲ junção de classes, 12 linhas
@@ -122,18 +144,27 @@ tests/
   helpers/images.ts                    construtores de cabeçalho, File e foto sintética
   helpers/codecs-node.ts               inicializa os codecs reais em Node
   helpers/workers.ts                   ◆ workers de mentira, dirigidos pelo teste
-  unit/                                303 testes — lógica, com codecs injetados
+  helpers/electron-reference.ts        ◇◇ o pipeline do desktop, transcrito
+  unit/                                329 testes — lógica, com codecs injetados
   integration/engine-codecs.test.ts    6 testes — o motor com os codecs de verdade
-  e2e/                                 ◇ 20 testes × 3 navegadores, contra out/
+  integration/electron-parity.test.ts  ◇◇ 9 testes — os dois produtos lado a lado
+  integration/metadata.test.ts         ○ 4 testes — o EXIF não sobrevive
+  e2e/                                 ◇ 32 testes × 3 navegadores, contra out/
   e2e/fixtures.ts                      ◇ PNGs montados à mão, com marcador
+  e2e/preferencias.spec.ts             ◈◈ persistência e perfis num navegador
+  e2e/comparar.spec.ts                 ◆◆ o <dialog> e o título da aba
+  e2e/offline.spec.ts                  ○ comprime sem rede
 README.md                              ◈ o que é, os números, como rodar
 scripts/serve-out.mjs                  ◇ serve out/ para o E2E e o Lighthouse
 scripts/screenshot.mjs                 ◈ regenera a captura do README
+scripts/paridade.mjs                   ◇◇ reescreve COMPARACAO-ELECTRON.md
+scripts/gerar-sw.mjs                   ○ gera o service worker a partir do out/
 docs/                                  PLANO, SPIKE, HANDOFF, ARQUITETURA,
-                                       ROADMAP, brand/, imagens/
+                                       ROADMAP, COMPARACAO-ELECTRON, brand/, imagens/
 ```
 
-`★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6, `◇` o 7, `◈` o 8.
+`★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6, `◇` o 7, `◈` o 8,
+`◇◇` o 9, `◈◈` o 10, `◆◆` o 11 e `○` o 12.
 
 Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/07/2026
 (as seis coincidiram com o que o plano previa):
@@ -766,6 +797,9 @@ arquivo. Nada de mockup.
 | **Aviso de chunk circular**   | Qualquer `new Worker(new URL(…))` faz o webpack avisar `Circular dependency between chunks with runtime`. Reproduzi com um worker sem **nenhum** módulo compartilhado: é do bundler, não do nosso grafo. Só afeta hash de cache; a saída é correta |
 | **`self` no worker**          | O `tsconfig` carrega `dom` **e** `webworker`, então o tipo de `self` é ambíguo — o `postMessage` de `Window` exige `targetOrigin`. O `image.worker.ts` declara a fatia que usa em vez de recorrer a `any`                                          |
 | **`structuredClone` de erro** | Não preserva a subclasse: um `AbortedError` chega como `Error` genérico. Por isso o `kind` viaja explícito no `JobError` (§7)                                                                                                                      |
+| **E2E antes da hidratação**   | A página funciona como HTML antes de o React assumir; uma tecla nesse intervalo mexe no `<input>` nativo e some no primeiro render controlado. Falha só no WebKit e só sob carga. Esperar o rótulo do `ThemeToggle` mudar (§18)                    |
+| **`sharp` tem `export =`**    | `typeof import('sharp').default` não existe no tipo, embora o `import()` dinâmico entregue um namespace com `default` em runtime. Daí o alias `SharpFn` e a ponte em `loadSharp` (§17)                                                             |
+| **Service worker em dev**     | Registrar em `next dev` faz o cache servir os chunks do Turbopack e o HMR para de funcionar. O registro é guardado por `NODE_ENV` (§20)                                                                                                            |
 
 ---
 
@@ -793,19 +827,22 @@ Não reabrir sem motivo novo:
 
 ## 14. Riscos ainda abertos
 
-| Risco                                                                                 | Situação                                                                                   |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Nada foi comprimido dentro de um navegador de verdade                                 | 🟢 **Fechado** — 60 testes E2E em Chromium, Firefox e WebKit (§10)                         |
-| Safari/WebKit nunca medido                                                            | 🟢 **Fechado** — passa em tudo, inclusive AVIF e ZIP (§10)                                 |
-| Turbopack não empacota os codecs multi-thread                                         | 🟢 **Contornado** com `--webpack` — revisitar no futuro                                    |
-| Quantizador próprio não atingir o custo estimado                                      | 🟢 **Fechado** — 92 ms a 12MP, melhor que a estimativa                                     |
-| Turbopack com os workers (`next dev`)                                                 | 🟢 **Fechado** — compila e serve a home com o pool no grafo (§8)                           |
-| Lighthouse ≥ 90                                                                       | 🟢 **Fechado** — 98 · 100 · 100 · 100 na home, 95 · 100 · 100 na landing (§10)             |
-| Orçamento de 96 MP em voo continua estimativa, não medição                            | 🟡 A aritmética está testada e o E2E não travou nenhuma aba; falta medir memória real      |
-| Firefox lento pode exigir ajuste do teto de 20 s por job                              | 🟡 Nenhum job estourou o teto no E2E, mas com fixturas modestas — refazer com foto de 12MP |
-| Deploy carrega `.wasm` que nunca usamos (`avif_enc_mt` 3,4 MB, `hqx`, `magic-kernel`) | 🟡 **Avaliado e deixado como está** — ver abaixo                                           |
-| ZIP acima de 4 GB no total (fflate sem ZIP64)                                         | 🟡 Irrelevante para imagens; revisitar na Fase 3 (§9)                                      |
-| Cabeçalho da imagem de OG em host que não seja a Vercel                               | 🟡 Há teste E2E, mas ele mede o servidor local — conferir depois do primeiro deploy (§10)  |
+| Risco                                                                                 | Situação                                                                                        |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Nada foi comprimido dentro de um navegador de verdade                                 | 🟢 **Fechado** — 60 testes E2E em Chromium, Firefox e WebKit (§10)                              |
+| Safari/WebKit nunca medido                                                            | 🟢 **Fechado** — passa em tudo, inclusive AVIF e ZIP (§10)                                      |
+| Turbopack não empacota os codecs multi-thread                                         | 🟢 **Contornado** com `--webpack` — revisitar no futuro                                         |
+| Quantizador próprio não atingir o custo estimado                                      | 🟢 **Fechado** — 92 ms a 12MP, melhor que a estimativa                                          |
+| Turbopack com os workers (`next dev`)                                                 | 🟢 **Fechado** — compila e serve a home com o pool no grafo (§8)                                |
+| Lighthouse ≥ 90                                                                       | 🟢 **Fechado** — 98 · 100 · 100 · 100 na home, 95 · 100 · 100 na landing (§10)                  |
+| Orçamento de 96 MP em voo continua estimativa, não medição                            | 🟡 A aritmética está testada e o E2E não travou nenhuma aba; falta medir memória real           |
+| Firefox lento pode exigir ajuste do teto de 20 s por job                              | 🟡 Nenhum job estourou o teto no E2E, mas com fixturas modestas — refazer com foto de 12MP      |
+| Deploy carrega `.wasm` que nunca usamos (`avif_enc_mt` 3,4 MB, `hqx`, `magic-kernel`) | 🟡 **Avaliado e deixado como está** — ver abaixo                                                |
+| ZIP acima de 4 GB no total (fflate sem ZIP64)                                         | 🟡 Irrelevante para imagens; revisitar na Fase 3 (§9)                                           |
+| Cabeçalho da imagem de OG em host que não seja a Vercel                               | 🟡 Há teste E2E, mas ele mede o servidor local — conferir depois do primeiro deploy (§10)       |
+| Cache-Control do `/sw.js` no host                                                     | 🟡 Um service worker com cache longo prende o app numa versão antiga — conferir no deploy (§20) |
+| Navegação offline no Safari                                                           | 🟡 O harness do Playwright não consegue medir; o service worker instala e controla lá (§20)     |
+| Lighthouse medido em máquina ocupada                                                  | 🟡 95 hoje, 98 antes; o service worker custa ≤ 1 ponto (medido com e sem) — refazer limpo       |
 
 **Sobre os 3,4 MB do `avif_enc_mt`:** dá para tirá-los com uma regra de substituição de
 módulo no webpack, e a economia seria 28% do deploy (12 MB no total). Não fiz, e a razão
@@ -851,59 +888,40 @@ Do brief original, com o estado de cada um:
 ```bash
 cd Compressify
 npm install                # o .npmrc já força o registry público
-npm run check              # 309 testes de unidade, ~12 s
-npm run build              # exportação estática, via webpack (§4)
+npm run check              # 348 testes, ~50 s (20 s são a paridade — §17)
+npm run build              # exportação estática + service worker (§4, §20)
 npx playwright install     # uma vez: baixa Chromium, Firefox e WebKit
-npm run e2e                # 60 testes nos três motores, contra out/
+npm run e2e                # 97 testes nos três motores, contra out/
+npm run paridade           # reescreve COMPARACAO-ELECTRON.md a partir da medição
 npm run dev                # http://localhost:3000
 ```
 
 **Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §12.
 
-### A Fase 1 acabou. O que fazer a seguir
+### O que fazer a seguir
 
-Em ordem de prioridade, e o primeiro item é o único que fecha uma dívida:
+A Fase 1 está fechada com os 10 critérios de aceite medidos, e sete dos oito itens do
+roadmap foram feitos. O que resta, em ordem:
 
-1. **Fechar o critério de aceite #2** (§15): comparar numericamente as saídas do modo meta
-   com as do app Electron sobre as mesmas imagens, dentro da banda de ±10% (AVIF
-   excluído). As fixturas do desktop estão na tag `v1.0.0-electron`. É a única promessa do
-   brief que ainda não tem número.
-2. **Deploy.** O `NEXT_PUBLIC_SITE_URL` aponta para `compressify.vercel.app`; ajustar se o
-   domínio for outro, porque três lugares leem essa constante (canônica, sitemap,
-   JSON-LD). Depois do primeiro deploy, **conferir o `Content-Type` da imagem de Open
-   Graph** — ela sai sem extensão na exportação estática (§10).
-3. **As melhorias independentes de fase** listadas em [`ROADMAP.md`](ROADMAP.md), em
-   ordem de retorno por esforço.
-4. **Fase 2 (PDF)** — um `engine/pdf/engine.ts` implementando `CompressionEngine` e uma
+1. **Deploy.** É a única coisa que separa o projeto de estar no ar, e é um passo para
+   fora que precisa da decisão do Igor. O `NEXT_PUBLIC_SITE_URL` aponta para
+   `compressify.vercel.app`; ajustar se o domínio for outro, porque três lugares leem
+   essa constante (canônica, sitemap, JSON-LD). **Duas conferências depois do primeiro
+   deploy:**
+   - o `Content-Type` da imagem de Open Graph, que sai sem extensão na exportação
+     estática (§10);
+   - o `Content-Type` de `/sw.js` e o cabeçalho de cache dele. Um service worker servido
+     com cache longo demais é o que faz um PWA ficar preso numa versão antiga. A Vercel
+     serve `no-cache` para `sw.js` por padrão, mas isso é da Vercel, não nosso.
+2. **Refazer a medição do Lighthouse numa máquina em repouso.** Os 95 do README foram
+   medidos com build e testes rodando; o número já foi 98. O service worker foi medido
+   com e sem e custa no máximo 1 ponto, então a diferença é ambiente — mas o número
+   publicado deveria vir de uma medição limpa.
+3. **Fase 2 (PDF)** — um `engine/pdf/engine.ts` implementando `CompressionEngine` e uma
    linha no registro. A fila, o pool, o orçamento, o cancelamento, a nomenclatura e as três
    saídas funcionam sem alteração.
-
-### A mensagem de commit sugerida
-
-O Incremento 8 está na árvore, sem commit (`README.md`, `docs/ARQUITETURA.md`,
-`docs/ROADMAP.md`, `docs/imagens/`, `scripts/screenshot.mjs`, `app/apple-icon.svg`):
-
-```
-docs: README, arquitetura e roadmap — a Fase 1 fica documentada
-
-O README não existia desde que o do app Electron saiu no Incremento 1. O novo
-abre com a afirmação central do produto, mostra a captura da tela real nos dois
-temas e traz só número medido: Lighthouse 98/100/100/100, 175 KB de JavaScript
-inicial com gzip, 11,4 MB virando 1,6 MB num lote de três PNGs, 309 testes de
-unidade e 60 E2E.
-
-ARQUITETURA.md descreve as camadas e, principalmente, por que cada fronteira
-está onde está — a tese é que a separação toda existe por um motivo só: quase
-nada disso seria testável se as camadas não tivessem sido separadas na mão.
-
-ROADMAP.md trata Fase 2 e Fase 3 a partir do que já está preparado, e registra
-o que deliberadamente não entra: conta de usuário, processamento no servidor
-"para arquivos grandes", e analytics.
-
-A captura de tela é gerada por scripts/screenshot.mjs, que sobe o build
-estático, comprime três fotos de verdade com as fixturas do E2E e fotografa os
-dois temas. Captura de tela envelhece; com script, atualizá-la é um comando.
-```
+4. **O último item do roadmap** — enxugar os `.wasm` não usados — continua parado de
+   propósito, e o gatilho para revisitá-lo é a Fase 3 (§14).
 
 Ordem de leitura para quem chega: `README.md` → **este arquivo** → `ARQUITETURA.md` →
 `PLANO.md` §3 (as decisões do motor) → `SPIKE.md` §5 (as mitigações medidas) →
@@ -911,7 +929,191 @@ Ordem de leitura para quem chega: `README.md` → **este arquivo** → `ARQUITET
 
 O comentário no topo do `strategy.ts` explica por que ele não importa nada — essa
 separação é o que sustenta a testabilidade do projeto inteiro. O `engine.ts` liga os
-codecs sem quebrá-la: eles entram por injeção, e é por isso que 303 dos 309 testes de
-unidade rodam sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a
+codecs sem quebrá-la: eles entram por injeção, e é por isso que 329 dos 348 testes
+rodam sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a
 fábrica de workers, e a `store/queue.ts` uma acima ainda. O E2E fecha por fora: o que
 todas essas fronteiras permitiram testar isoladamente, ele prova junto, num navegador.
+
+---
+
+## 17. O Incremento 9 — a paridade virou número
+
+A última promessa do brief sem medição. O `PLANO.md` afirmava que o algoritmo tinha sido
+portado fielmente, e havia 300 testes sustentando cada peça — mas nenhum deles punha os
+**dois produtos** lado a lado sobre os mesmos bytes.
+
+`tests/helpers/electron-reference.ts` é a transcrição literal do pipeline de
+`src/main/index.ts` da tag `v1.0.0-electron`, rodando com `sharp` **0.33.5** — a versão
+que o `package-lock.json` daquela tag resolveu. Comparar com outra versão de libvips
+compararia duas coisas ao mesmo tempo.
+
+A regra do arquivo é não melhorar nada: ele reproduz inclusive o piso de resolução
+defeituoso, que testava a escala _atual_ antes de multiplicar. É o defeito que faz a
+comparação valer.
+
+### O resultado
+
+| Regime                            | Pior caso                     |
+| --------------------------------- | ----------------------------- |
+| Meta alcançável sem redimensionar | **+0,4%** (dois casos a 0,0%) |
+| Meta que exige downscale          | +78%, e não é regressão       |
+
+Os dois casos a **0,0%** fazem sentido: os dois lados codificam JPEG com mozjpeg na mesma
+qualidade, um nativo e outro em WASM. Byte a byte.
+
+O caso de +78% é o piso de 900px (`PLANO.md` §3.3): o desktop entrega um arquivo menor
+porque entrega **uma imagem menor**, 1128×846 contra os nossos 1344×1008. Comparar bytes
+ali seria comparar duas decisões de produto. O relatório mostra o caso com o número em
+vez de escondê-lo, e o teste continua exigindo o que é do algoritmo — que o piso valha, e
+que nenhum dos dois entregue acima da meta em silêncio.
+
+### Duas decisões
+
+1. **A comparação roda no `npm run check`**, e custa ~20 s. Uma verificação que só roda
+   quando alguém lembra para de valer no dia em que alguém mexe na estratégia. Sem o
+   `sharp` instalado (é `devDependency`), a suíte é **pulada, não quebrada**.
+2. **O relatório é gerado pela medição** (`npm run paridade`), pelo mesmo motivo que a
+   captura do README é um script: número copiado à mão envelhece sem avisar.
+
+---
+
+## 18. O Incremento 10 — perfis e preferências que ficam
+
+Dois itens do roadmap que são o mesmo problema visto de dois lados: quase ninguém sabe o
+que significa qualidade 82, e quem descobriu não quer redescobrir a cada visita.
+
+**O perfil aceso é derivado das opções.** Não existe campo `profile` no estado, então não
+existe a falha clássica de o rótulo dizer "Web" enquanto o slider está em 40. Mexer num
+controle cai em "Personalizado" sozinho; voltar a bater reacende o perfil.
+
+Cuidado de vocabulário que vale para quem for mexer: `JobOptions.preset` já significa
+**meta de tamanho**, herdado do Electron. Por isso _perfis_, não _presets_.
+
+**Nada que venha do `localStorage` é confiado.** A validação é campo a campo — um spread
+sobre o padrão aceitaria `quality: "muita"` e mandaria a string para o motor. Vocabulário
+desconhecido cai no padrão; número fora de faixa é clampado, porque "0" é intenção
+legível e "turbo" não é.
+
+**Só configuração é guardada, nunca nada sobre os arquivos.** Há um teste de unidade e um
+E2E prendendo exatamente isso: se alguém acrescentar "últimos arquivos" ali um dia, os
+dois quebram e a decisão precisa ser consciente.
+
+### A hidratação roda depois da montagem, e é de propósito
+
+A página é pré-renderizada na build, onde `localStorage` não existe. Ler a preferência
+durante a **primeira** renderização do cliente faria o React encontrar um HTML diferente
+do que acabou de gerar — o painel diria "meta · 10 MB" onde o documento diz "auto · 5 MB".
+O preço é um quadro com os padrões, o mesmo que o `ThemeToggle` já paga pelo rótulo
+neutro. **Não "otimize" isso**: o `preferencias.spec.ts` e o teste de JavaScript desligado
+quebram juntos.
+
+`DEFAULT_OPTIONS` e as faixas saíram para `lib/defaults.ts`, que é folha:
+`lib/preferences.ts` precisa validar um valor sem puxar a store, e a store puxa o
+orquestrador, que puxa o pool.
+
+### Uma armadilha de E2E que vale para os próximos
+
+O primeiro teste falhou **só no WebKit e só sob carga**. A causa não era o WebKit: é a
+página funcionar como HTML antes de o React assumir. Uma seta pressionada nesse intervalo
+mexe no `<input>` nativo, não chega na store e some no primeiro render controlado.
+
+A solução foi esperar um sinal de hidratação **que já é do produto**: o rótulo do
+`ThemeToggle` deixa de ser o neutro "Alternar tema". Qualquer teste novo que dispare
+teclado logo depois de um `goto` precisa da mesma espera.
+
+---
+
+## 19. O Incremento 11 — antes/depois e o título da aba
+
+"Perdeu qualidade?" é a pergunta que todo mundo faz, e o produto vinha respondendo com
+bytes, que é a resposta para outra pergunta.
+
+**A divisória é um `<input type="range">`** transparente por cima das imagens, não uma
+`div` com `onPointerMove`. Range nativo já traz setas, Home/End, PageUp/PageDown, toque e
+anúncio de valor — a mesma escolha que o slider de qualidade fez. O teste de teclado passa
+sem uma linha de código de teclado no componente.
+
+**A modal é um `<dialog>` nativo** com `showModal()`: armadilha de foco, `Esc`, inerte no
+resto da página e backdrop. Há E2E medindo o `Esc` nos três navegadores, porque "de graça"
+é uma afirmação sobre o navegador.
+
+**As duas object URLs nascem e morrem com a modal.** Cinquenta cards com a modal sempre
+montada seriam cem URLs segurando o lote na memória. O item passou a guardar o `File` de
+entrada, e isso não custa memória: um `File` é uma referência ao que o navegador já tem em
+disco, e o orquestrador já segura a mesma.
+
+**Nenhuma das imagens é `aria-hidden`.** A primeira versão escondia a de cima, e o teste
+não a encontrou — o que estava certo em recusar: as duas são conteúdo.
+
+### O título da aba mostra contagem, não porcentagem
+
+E a razão é arquitetural. Porcentagem real exigiria a média do progresso de todos os
+itens, ou seja, assinar `items` inteiro — exatamente o que a store foi desenhada para
+evitar (§8). A árvore repintaria dezenas de vezes por segundo para animar um texto que
+está fora da tela. `stats` já é estado, e "12 de 50" responde melhor que "37%".
+
+O título é restaurado no fim do lote **e no desmonte**: uma aba marcada com um lote que já
+acabou é pior que uma aba sem contador.
+
+---
+
+## 20. O Incremento 12 — sem rede, e sem metadados
+
+### O PWA
+
+O item mais alinhado com a tese do produto: um compressor que roda inteiro no cliente não
+tem motivo nenhum para exigir conexão depois do primeiro carregamento.
+
+**O service worker é gerado** por `scripts/gerar-sw.mjs`, dentro do `npm run build`. Não
+dava para escrevê-lo à mão: os chunks têm hash no nome, e uma lista de precache manual
+apontaria para o build anterior — o modo clássico de um PWA servir uma versão fantasma
+para sempre. A versão do cache é o hash da lista, então muda exatamente quando o conteúdo
+muda.
+
+**O casco é o que os documentos referenciam**, extraído do próprio HTML — a mesma técnica
+que o Incremento 3 usou para provar que nenhum codec vazava para o bundle inicial. A
+diferença é o ponto:
+
+| Critério                      | Tamanho    |
+| ----------------------------- | ---------- |
+| Varrer o `out/` inteiro       | 1,7 MB     |
+| Só o que o HTML referencia    | **832 KB** |
+| Os `.wasm` (fora do precache) | 9,7 MB     |
+
+Os codecs entram no cache **quando são usados**. Precacheá-los cobraria de quem só abriu a
+página o custo de todos os formatos, desfazendo o carregamento sob demanda.
+
+**Navegação é rede primeiro; o resto é cache primeiro.** O contrário prenderia a pessoa
+numa versão antiga até o worker trocar, e este é um app que ganha capacidade a cada
+deploy. Os assets com hash são imutáveis por construção, então cache primeiro neles é
+correto por definição.
+
+Sem `workbox` e sem `next-pwa`: dezenas de KB e uma dependência viva para substituir 60
+linhas. A regra de não carregar código de terceiros vale aqui como vale no HTML.
+
+**O registro só acontece em produção.** Em `next dev` o service worker interceptaria os
+chunks do Turbopack e o HMR passaria a servir cache — o bug mais confuso que existe.
+
+### Uma limitação de harness, registrada
+
+`context.setOffline(true)` seguido de `reload()` derruba o driver do WebKit com "WebKit
+encountered an internal error", **antes** de a navegação chegar ao service worker. Os dois
+testes que dependem disso são pulados lá, com a razão no arquivo. No mesmo WebKit o
+service worker instala, precacheia e assume o controle — isso está medido. O que fica sem
+medição no Safari é a navegação sem rede.
+
+### O EXIF não precisava de uma opção
+
+O roadmap pedia "remover metadados **opcionalmente**". Ao implementar, a conclusão foi que
+a caixinha não deveria existir: o pipeline decodifica para pixels e recodifica do zero,
+então EXIF, IPTC, XMP e ICC **nunca** atravessaram. Não havia o que ligar; havia o que
+provar.
+
+`tests/integration/metadata.test.ts` monta um JPEG com um bloco EXIF de verdade —
+assinatura, TIFF, tag `ImageDescription` — contendo um marcador, e verifica que ele não
+está na saída em `jpeg`, `webp` nem `png`. É o mesmo truque do `privacy.spec.ts`: o
+marcador dentro dos bytes é o que torna a afirmação verificável.
+
+A **orientação** é a exceção deliberada: ela não é preservada como metadado, é **aplicada
+aos pixels** (§3.2 do decode). A foto de celular em pé sai em pé, sem levar junto a
+coordenada de onde foi tirada.

@@ -109,8 +109,27 @@ export function ToolPage({ title, plainTitle, description, faq, children }: Tool
         ) : null}
       </main>
 
-      <footer className="border-border text-caption text-text-muted flex flex-wrap items-center justify-between gap-3 border-t py-7">
+      <footer className="border-border text-caption text-text-muted flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t py-7">
         <span>Compressify · processamento 100% local</span>
+
+        {/*
+          O único link para fora do site em toda a aplicação. `rel` com
+          `noopener` não é cerimônia: sem ele a aba aberta ganha uma referência
+          a esta, e `noreferrer` evita mandar a URL de origem junto — coerente
+          com um produto que não manda nada a lugar nenhum.
+        */}
+        <span>
+          Desenvolvido por{' '}
+          <a
+            href="https://www.linkedin.com/in/igor-cferreira/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-text hover:text-signal font-medium underline underline-offset-4 transition-colors"
+          >
+            Igor de Castro
+          </a>
+        </span>
+
         <span className="font-mono">JPG · PNG · WEBP · AVIF</span>
       </footer>
     </div>

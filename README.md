@@ -30,20 +30,37 @@ uma delas levar um byte do arquivo do usuário.
 - **Três saídas:** baixar um arquivo, baixar o lote em `.zip`, ou salvar direto numa pasta
   do disco onde o navegador oferece a File System Access API.
 - **Pastas inteiras**, com a estrutura de subpastas preservada na saída.
+- **Comparação antes/depois** com divisória arrastável — ou operável pelas setas do
+  teclado, porque é um `<input type="range">` de verdade.
+- **Perfis** (web, e-mail, impressão) e preferências que sobrevivem à aba fechada.
+- **Funciona sem rede.** Depois da primeira visita o app abre offline, e depois da
+  primeira compressão ele **comprime** offline — os codecs ficam em cache quando são
+  usados.
 
 Tudo com `Worker` + WebAssembly: a thread principal nunca toca em pixel nenhum.
 
+**Os metadados não sobrevivem.** O pipeline decodifica para pixels e recodifica do zero,
+então EXIF, IPTC, XMP e perfil ICC não atravessam — a coordenada de onde a foto foi
+tirada não sai do outro lado. A orientação é a exceção deliberada: ela não é preservada
+como metadado, é **aplicada aos pixels**, então a foto em pé sai em pé.
+
 ## Números medidos
 
-|                             |                                                                                   |
-| --------------------------- | --------------------------------------------------------------------------------- |
-| Lighthouse (home)           | **98** performance · **100** acessibilidade · **100** boas práticas · **100** SEO |
-| JavaScript inicial          | 175 KB com gzip — **zero** bytes de codec                                         |
-| HTML da home                | 7,2 KB com gzip, com o conteúdo todo dentro                                       |
-| Lote de 3 PNGs de 1600×1200 | 11,4 MB → 1,6 MB (**−86%**), ~400 ms por arquivo no Chromium                      |
-| Quantizador de PNG, 12 MP   | 92 ms                                                                             |
-| Paridade com o app desktop  | **±0,4%** no modo meta, contra o Electron/`sharp` sobre os mesmos bytes           |
-| Testes                      | 318 de unidade e integração + 60 E2E em Chromium, Firefox e WebKit                |
+|                                 |                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| Lighthouse (home)               | **95** performance · **100** acessibilidade · **100** boas práticas · **100** SEO |
+| JavaScript inicial              | 141 KB com gzip em 8 arquivos — **zero** bytes de codec                           |
+| Página inteira, primeira visita | 277 KB com gzip                                                                   |
+| Casco cacheado para uso offline | 832 KB — os 9,7 MB de codec entram só quando são usados                           |
+| Lote de 3 PNGs de 1600×1200     | 11,4 MB → 1,6 MB (**−86%**), ~400 ms por arquivo no Chromium                      |
+| Quantizador de PNG, 12 MP       | 92 ms                                                                             |
+| Paridade com o app desktop      | **±0,4%** no modo meta, contra o Electron/`sharp` sobre os mesmos bytes           |
+| Testes                          | 348 de unidade e integração + 97 E2E em Chromium, Firefox e WebKit                |
+
+O Lighthouse é medido contra `out/` servido com gzip, como a Vercel serve — medir sem
+compressão reprova o harness, não a página. O número já foi **98** numa máquina em
+repouso; os 95 acima são de uma máquina rodando build e testes. O service worker foi
+medido com e sem: a diferença é de no máximo 1 ponto.
 
 Os codecs (9,7 MB de `.wasm`) só são baixados quando um job produz aquele formato — o
 `avif_enc` de 3,4 MB nunca é tocado por quem só comprime JPG.
@@ -56,9 +73,9 @@ npm run dev          # http://localhost:3000
 ```
 
 ```bash
-npm run check        # typecheck + lint + formatação + 318 testes
+npm run check        # typecheck + lint + formatação + 348 testes
 npm run build        # exportação estática em out/
-npx playwright install && npm run e2e   # 60 testes nos três navegadores
+npx playwright install && npm run e2e   # 97 testes nos três navegadores
 ```
 
 Requer Node 20.9+. O `npm run build` usa webpack em vez de Turbopack — o motivo está em
@@ -88,7 +105,7 @@ Quatro fronteiras, cada uma escolhida para deixar o lado de dentro testável:
 | Concorrência | `engine/core/pool.ts`      | recebe uma fábrica de workers                                 |
 | Fila         | `store/queue.ts`           | recebe uma fábrica de orquestrador                            |
 
-É por isso que 303 dos 318 testes rodam sem carregar um byte de WebAssembly, e
+É por isso que 329 dos 348 testes rodam sem carregar um byte de WebAssembly, e
 a concorrência inteira — orçamento de memória, cancelamento com worker travado,
 retentativa — é exercitada em Node. O E2E fecha por fora: o que as fronteiras permitiram
 testar isolado, ele prova junto, num navegador de verdade.
@@ -97,13 +114,14 @@ Detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
 ## Documentação
 
-| Arquivo                                      | O que tem                                                      |
-| -------------------------------------------- | -------------------------------------------------------------- |
-| [`docs/HANDOFF.md`](docs/HANDOFF.md)         | **Comece aqui.** Estado, decisões, armadilhas e riscos abertos |
-| [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) | As camadas, as fronteiras e por que cada uma está onde está    |
-| [`docs/PLANO.md`](docs/PLANO.md)             | O plano técnico da refatoração, com as decisões justificadas   |
-| [`docs/SPIKE.md`](docs/SPIKE.md)             | As medições que derrubaram quatro suposições do plano          |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md)         | Fase 2 (PDF) e Fase 3 (vídeo e áudio)                          |
+| Arquivo                                                      | O que tem                                                      |
+| ------------------------------------------------------------ | -------------------------------------------------------------- |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md)                         | **Comece aqui.** Estado, decisões, armadilhas e riscos abertos |
+| [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md)                 | As camadas, as fronteiras e por que cada uma está onde está    |
+| [`docs/PLANO.md`](docs/PLANO.md)                             | O plano técnico da refatoração, com as decisões justificadas   |
+| [`docs/SPIKE.md`](docs/SPIKE.md)                             | As medições que derrubaram quatro suposições do plano          |
+| [`docs/COMPARACAO-ELECTRON.md`](docs/COMPARACAO-ELECTRON.md) | A paridade com o app desktop, gerada por medição               |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md)                         | Fase 2 (PDF) e Fase 3 (vídeo e áudio)                          |
 
 ## Origem
 
@@ -114,7 +132,11 @@ porte fiel daquele código, com duas mudanças deliberadas de comportamento, amb
 documentadas e testadas ([`docs/PLANO.md` §3.1](docs/PLANO.md)).
 
 O que mudou foi o entorno: o Sharp virou WebAssembly, o processo do Electron virou um pool
-de workers, e o que era um instalador de 400 MB virou uma página que cabe em 175 KB.
+de workers, e o que era um instalador de 400 MB virou uma página que cabe em 141 KB.
+
+Que as duas versões comprimem igual não é afirmação: o app desktop roda dentro da suíte de
+testes, com o mesmo `sharp` 0.33.5 daquela tag, sobre os mesmos bytes —
+[`docs/COMPARACAO-ELECTRON.md`](docs/COMPARACAO-ELECTRON.md).
 
 ## Tecnologias
 
