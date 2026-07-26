@@ -8,11 +8,12 @@
 > testes de unidade e 60 E2E em Chromium, Firefox e WebKit. Lighthouse
 > 98 · 100 · 100 · 100 na home.
 >
-> Os Incrementos 3 a 7 estão comitados. **O Incremento 8 está na árvore, sem
-> commit**, e a mensagem sugerida está em §16.
+> Os Incrementos 3 a 8 estão comitados e publicados em `origin/main`.
 >
-> **Um critério de aceite continua aberto** (§15): a comparação numérica do modo
-> meta com as saídas do app Electron. É a primeira coisa a fazer.
+> **Os 10 critérios de aceite estão fechados** (§15). O último — a comparação
+> numérica do modo meta com o app Electron — foi medido no Incremento 9 e deu
+> **+0,4% no pior caso**, com dois casos idênticos ao byte:
+> [`COMPARACAO-ELECTRON.md`](COMPARACAO-ELECTRON.md).
 
 ---
 
@@ -823,9 +824,10 @@ Do brief original, com o estado de cada um:
 
 - [x] 50 imagens em paralelo com progresso individual — E2E comprime lotes com progresso
       por arquivo nos três navegadores
-- [ ] Modo meta equivalente ao Electron (±10%, AVIF excluído) — motor pronto e verificado
-      em Node e em navegador; falta a comparação numérica com as saídas do app Electron
-      sobre as mesmas imagens. **É o único critério que continua aberto**
+- [x] Modo meta equivalente ao Electron (±10%, AVIF excluído) — **medido: pior caso
+      +0,4%**, com dois casos idênticos ao byte. A comparação roda os dois produtos sobre
+      os mesmos bytes e está em [`COMPARACAO-ELECTRON.md`](COMPARACAO-ELECTRON.md); o
+      relatório é gerado pela medição (`npm run paridade`), não escrito à mão
 - [x] Nenhuma requisição carregando conteúdo do usuário — `privacy.spec.ts` verifica
       origem, corpo e o marcador dentro do arquivo, nos três navegadores
 - [x] A aba não trava — o E2E mede `requestAnimationFrame` durante o lote e exige

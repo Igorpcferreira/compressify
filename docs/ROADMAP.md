@@ -9,11 +9,12 @@
 
 Concluída. JPG, PNG, WebP e AVIF; compressão em lote com progresso e cancelamento;
 conversão entre formatos; meta de tamanho; download individual, ZIP e File System Access;
-três landings de SEO; 309 testes de unidade e 60 E2E em Chromium, Firefox e WebKit.
+três landings de SEO; 318 testes de unidade e 60 E2E em Chromium, Firefox e WebKit.
 
-Fica um item de acabamento em aberto, rastreado em [`HANDOFF.md` §14](HANDOFF.md):
-comparar numericamente as saídas do modo meta com as do app Electron sobre as mesmas
-imagens (o critério de aceite #2 pede ±10%). O motor está verificado; falta a comparação.
+**Os 10 critérios de aceite estão fechados.** O último a cair foi o #2: o modo meta
+produz saídas dentro de **+0,4%** das do app Electron sobre os mesmos bytes — a medição
+está em [`COMPARACAO-ELECTRON.md`](COMPARACAO-ELECTRON.md) e é reproduzível com
+`npm run paridade`.
 
 ---
 
@@ -83,16 +84,16 @@ Coisas que valem por si, em ordem de retorno por esforço:
 
 |     | O quê                                                   | Por quê                                                           |
 | --- | ------------------------------------------------------- | ----------------------------------------------------------------- |
-| 1   | **Comparação com as fixturas do Electron**              | fecha o último critério de aceite da Fase 1                       |
-| 2   | **Presets de saída** ("web", "e-mail", "impressão")     | a maior parte dos usuários não quer escolher qualidade em número  |
-| 3   | **Lembrar as preferências** (`localStorage`)            | quem comprime para web comprime para web sempre                   |
-| 4   | **Comparação antes/depois** com slider na imagem        | a pergunta que todo mundo faz é "perdeu qualidade?"               |
-| 5   | **Remover metadados EXIF opcionalmente**                | privacidade de novo: geolocalização em foto de celular            |
-| 6   | **Barra de progresso global** na aba (`document.title`) | lote de 50 arquivos é tempo de trocar de aba                      |
+| ✅  | ~~Comparação com o app Electron~~                       | fechou o último critério de aceite da Fase 1                      |
+| 1   | **Presets de saída** ("web", "e-mail", "impressão")     | a maior parte dos usuários não quer escolher qualidade em número  |
+| 2   | **Lembrar as preferências** (`localStorage`)            | quem comprime para web comprime para web sempre                   |
+| 3   | **Comparação antes/depois** com slider na imagem        | a pergunta que todo mundo faz é "perdeu qualidade?"               |
+| 4   | **Remover metadados EXIF opcionalmente**                | privacidade de novo: geolocalização em foto de celular            |
+| 5   | **Barra de progresso global** na aba (`document.title`) | lote de 50 arquivos é tempo de trocar de aba                      |
+| 6   | **PWA / uso offline**                                   | um app que não precisa de rede tem tudo para funcionar sem ela    |
 | 7   | **Enxugar os `.wasm` não usados**                       | 3,4 MB de deploy — só depois que a Fase 3 decidir sobre COOP/COEP |
-| 8   | **PWA / uso offline**                                   | um app que não precisa de rede tem tudo para funcionar sem ela    |
 
-O item 8 é o mais alinhado com a tese do produto: **um compressor que roda inteiro no
+O item 6 é o mais alinhado com a tese do produto: **um compressor que roda inteiro no
 cliente não tem motivo nenhum para exigir conexão** depois do primeiro carregamento.
 
 ---

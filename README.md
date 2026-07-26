@@ -42,7 +42,8 @@ Tudo com `Worker` + WebAssembly: a thread principal nunca toca em pixel nenhum.
 | HTML da home                | 7,2 KB com gzip, com o conteúdo todo dentro                                       |
 | Lote de 3 PNGs de 1600×1200 | 11,4 MB → 1,6 MB (**−86%**), ~400 ms por arquivo no Chromium                      |
 | Quantizador de PNG, 12 MP   | 92 ms                                                                             |
-| Testes                      | 309 de unidade e integração + 60 E2E em Chromium, Firefox e WebKit                |
+| Paridade com o app desktop  | **±0,4%** no modo meta, contra o Electron/`sharp` sobre os mesmos bytes           |
+| Testes                      | 318 de unidade e integração + 60 E2E em Chromium, Firefox e WebKit                |
 
 Os codecs (9,7 MB de `.wasm`) só são baixados quando um job produz aquele formato — o
 `avif_enc` de 3,4 MB nunca é tocado por quem só comprime JPG.
@@ -55,7 +56,7 @@ npm run dev          # http://localhost:3000
 ```
 
 ```bash
-npm run check        # typecheck + lint + formatação + 309 testes
+npm run check        # typecheck + lint + formatação + 318 testes
 npm run build        # exportação estática em out/
 npx playwright install && npm run e2e   # 60 testes nos três navegadores
 ```
@@ -87,7 +88,7 @@ Quatro fronteiras, cada uma escolhida para deixar o lado de dentro testável:
 | Concorrência | `engine/core/pool.ts`      | recebe uma fábrica de workers                                 |
 | Fila         | `store/queue.ts`           | recebe uma fábrica de orquestrador                            |
 
-É por isso que 303 dos 309 testes de unidade rodam sem carregar um byte de WebAssembly, e
+É por isso que 303 dos 318 testes rodam sem carregar um byte de WebAssembly, e
 a concorrência inteira — orçamento de memória, cancelamento com worker travado,
 retentativa — é exercitada em Node. O E2E fecha por fora: o que as fronteiras permitiram
 testar isolado, ele prova junto, num navegador de verdade.
