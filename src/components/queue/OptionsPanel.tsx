@@ -108,7 +108,16 @@ export function OptionsPanel() {
             )
           })}
 
-          {!active && <span className="text-caption text-text-muted">Personalizado</span>}
+          {/*
+            Um estado, não uma quarta opção. Na captura de tela do README a
+            primeira versão saiu alinhada com os três botões e com o mesmo
+            peso — quem olha lê quatro escolhas, sendo que esta não é
+            clicável. O separador e o itálico dizem "é isto que está valendo"
+            em vez de "clique aqui".
+          */}
+          {!active && (
+            <span className="text-caption text-text-muted ml-1 italic">· Personalizado</span>
+          )}
         </div>
       </div>
 
