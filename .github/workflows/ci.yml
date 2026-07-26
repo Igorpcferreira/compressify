@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: typecheck · lint · format · testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: npm run check
+        run: npm run check
+
+  build:
+    name: build estático
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar exportação estática
+        run: npm run build
+
+      # A promessa do produto é que nada é enviado. Se o build gerar qualquer
+      # serverless function, a promessa deixou de ser estrutural — falha aqui.
+      - name: Verificar que o deploy não contém funções
+        run: |
+          if [ -d ".next/server/app" ] && find .next/server/app -name "*.func" | grep -q .; then
+            echo "::error::O build gerou serverless functions. O projeto deve ser 100% estático."
+            exit 1
+          fi
+          test -f out/index.html || { echo "::error::out/index.html não foi gerado."; exit 1; }
+          echo "OK: exportação estática, sem funções."

@@ -1,9 +1,36 @@
+# dependências
 node_modules/
+.pnp
+.pnp.js
+
+# build
+.next/
 out/
-release/
 dist/
-.vite/
-*.log
+build/
+
+# resíduos do app Electron (preservado em legacy/electron e na tag v1.0.0-electron)
+release/
+
+# testes e cobertura
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# ambiente
+.env
+.env.local
+.env*.local
+.vercel
+
+# ferramentas
 *.tsbuildinfo
-Thumbs.db
+next-env.d.ts
+.eslintcache
+
+# sistema operacional
 .DS_Store
+Thumbs.db
+*.log

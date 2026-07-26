@@ -13,15 +13,15 @@
 **GO** — o motor é viável no navegador. Mas as medições derrubaram **quatro suposições
 do `PLANO.md`**, uma delas séria o bastante para virar decisão de produto.
 
-| Descoberta | Efeito no plano |
-|---|---|
-| AVIF com `speed: 8` é **6,3× mais rápido** que com `speed: 6` | Viabiliza o AVIF. Muda §3.6 |
-| Firefox é **3–9× mais lento que o Chromium em WASM** | Novo. Muda o dimensionamento e a UX |
-| `oxipng` nível 1 entrega os **mesmos bytes** do nível 2 em metade do tempo | Muda §3.4 |
-| `image-q` custa 13–32 s por imagem de 12MP mesmo otimizado | Ameaça a decisão 1. **Precisa da sua escolha** |
-| `target_size` do libwebp **estoura a meta** | Rejeitado. A busca binária fica |
-| Decode nativo ganha 1,0–6,9×, não "ordens de grandeza" | Corrige um exagero meu em §3.2 |
-| Saída antecipada da busca economiza ~14%, não ~30% | Corrige minha estimativa em §3.1 |
+| Descoberta                                                                 | Efeito no plano                                |
+| -------------------------------------------------------------------------- | ---------------------------------------------- |
+| AVIF com `speed: 8` é **6,3× mais rápido** que com `speed: 6`              | Viabiliza o AVIF. Muda §3.6                    |
+| Firefox é **3–9× mais lento que o Chromium em WASM**                       | Novo. Muda o dimensionamento e a UX            |
+| `oxipng` nível 1 entrega os **mesmos bytes** do nível 2 em metade do tempo | Muda §3.4                                      |
+| `image-q` custa 13–32 s por imagem de 12MP mesmo otimizado                 | Ameaça a decisão 1. **Precisa da sua escolha** |
+| `target_size` do libwebp **estoura a meta**                                | Rejeitado. A busca binária fica                |
+| Decode nativo ganha 1,0–6,9×, não "ordens de grandeza"                     | Corrige um exagero meu em §3.2                 |
+| Saída antecipada da busca economiza ~14%, não ~30%                         | Corrige minha estimativa em §3.1               |
 
 ---
 
@@ -56,36 +56,36 @@ Tempo em milissegundos. "ganho" = quantas vezes o WASM é mais lento que o nativ
 ### Chromium
 
 | Resolução | Formato | `createImageBitmap` | `@jsquash/*/decode` | ganho |
-|---|---|---|---|---|
-| 2MP | JPEG | 27 ms | 27 ms | 1,0× |
-| 2MP | PNG | 26 ms | 31 ms | 1,2× |
-| 2MP | WebP | 35 ms | 52 ms | 1,5× |
-| 12MP | JPEG | 291 ms | **189 ms** | 0,6× |
-| 12MP | PNG | 141 ms | 188 ms | 1,3× |
-| 12MP | WebP | 258 ms | 730 ms | 2,8× |
-| 24MP | JPEG | 327 ms | 422 ms | 1,3× |
-| 24MP | PNG | 357 ms | 482 ms | 1,3× |
-| 24MP | WebP | 457 ms | 745 ms | 1,6× |
+| --------- | ------- | ------------------- | ------------------- | ----- |
+| 2MP       | JPEG    | 27 ms               | 27 ms               | 1,0×  |
+| 2MP       | PNG     | 26 ms               | 31 ms               | 1,2×  |
+| 2MP       | WebP    | 35 ms               | 52 ms               | 1,5×  |
+| 12MP      | JPEG    | 291 ms              | **189 ms**          | 0,6×  |
+| 12MP      | PNG     | 141 ms              | 188 ms              | 1,3×  |
+| 12MP      | WebP    | 258 ms              | 730 ms              | 2,8×  |
+| 24MP      | JPEG    | 327 ms              | 422 ms              | 1,3×  |
+| 24MP      | PNG     | 357 ms              | 482 ms              | 1,3×  |
+| 24MP      | WebP    | 457 ms              | 745 ms              | 1,6×  |
 
 ### Firefox
 
 | Resolução | Formato | `createImageBitmap` | `@jsquash/*/decode` | ganho |
-|---|---|---|---|---|
-| 2MP | JPEG | 36 ms | 135 ms | 3,8× |
-| 2MP | PNG | 28 ms | 194 ms | 6,9× |
-| 2MP | WebP | 51 ms | 338 ms | 6,6× |
-| 12MP | JPEG | 217 ms | 913 ms | 4,2× |
-| 12MP | PNG | 155 ms | 1,0 s | 6,7× |
-| 12MP | WebP | 240 ms | 1,5 s | 6,4× |
-| 24MP | JPEG | 667 ms | 2,0 s | 2,9× |
-| 24MP | PNG | 351 ms | 2,1 s | 6,1× |
-| 24MP | WebP | 523 ms | 2,9 s | 5,6× |
+| --------- | ------- | ------------------- | ------------------- | ----- |
+| 2MP       | JPEG    | 36 ms               | 135 ms              | 3,8×  |
+| 2MP       | PNG     | 28 ms               | 194 ms              | 6,9×  |
+| 2MP       | WebP    | 51 ms               | 338 ms              | 6,6×  |
+| 12MP      | JPEG    | 217 ms              | 913 ms              | 4,2×  |
+| 12MP      | PNG     | 155 ms              | 1,0 s               | 6,7×  |
+| 12MP      | WebP    | 240 ms              | 1,5 s               | 6,4×  |
+| 24MP      | JPEG    | 667 ms              | 2,0 s               | 2,9×  |
+| 24MP      | PNG     | 351 ms              | 2,1 s               | 6,1×  |
+| 24MP      | WebP    | 523 ms              | 2,9 s               | 5,6×  |
 
 **A decisão 4 (decode híbrido) se confirma, mas por motivo diferente do que argumentei.**
 
 No `PLANO.md` §3.2 escrevi que o decode nativo seria "ordens de grandeza mais rápido".
 **Estava errado.** No Chromium o ganho é modesto e, em JPEG de 12MP, o decoder WASM foi
-*mais rápido* que o nativo. A justificativa real é outra e continua forte:
+_mais rápido_ que o nativo. A justificativa real é outra e continua forte:
 
 1. **No Firefox o ganho é grande** — 3–7×. E o Firefox é justamente onde sobra menos
    margem (§4).
@@ -100,29 +100,29 @@ Fica mantido: nativo como principal, WASM como fallback.
 
 Qualidade 75, um encode. Tempos em segundos onde aplicável.
 
-| Resolução | Formato | Chromium | Firefox | FF/Cr | Bytes |
-|---|---|---|---|---|---|
-| 2MP | JPEG | 239 ms | 1,1 s | 4,6× | 147 KB |
-| 2MP | WebP | 214 ms | 1,5 s | 7,0× | 263 KB |
-| 2MP | AVIF | 1,9 s | 16,0 s | 8,4× | 81 KB |
-| 2MP | PNG | 21 ms | 192 ms | 9,1× | 4,9 MB |
-| 12MP | JPEG | 1,7 s | 5,9 s | 3,5× | 903 KB |
-| 12MP | WebP | 1,2 s | 8,5 s | 7,1× | 1,6 MB |
-| 12MP | AVIF | 8,7 s | 86,0 s | 9,9× | 499 KB |
-| 12MP | PNG | 139 ms | 1,1 s | 7,9× | 30,6 MB |
-| 24MP | JPEG | 2,5 s | 11,2 s | 4,5× | 1,8 MB |
-| 24MP | WebP | 2,9 s | 18,6 s | 6,4× | 3,3 MB |
-| 24MP | PNG | 308 ms | 2,2 s | 7,1× | 61,4 MB |
+| Resolução | Formato | Chromium | Firefox | FF/Cr | Bytes   |
+| --------- | ------- | -------- | ------- | ----- | ------- |
+| 2MP       | JPEG    | 239 ms   | 1,1 s   | 4,6×  | 147 KB  |
+| 2MP       | WebP    | 214 ms   | 1,5 s   | 7,0×  | 263 KB  |
+| 2MP       | AVIF    | 1,9 s    | 16,0 s  | 8,4×  | 81 KB   |
+| 2MP       | PNG     | 21 ms    | 192 ms  | 9,1×  | 4,9 MB  |
+| 12MP      | JPEG    | 1,7 s    | 5,9 s   | 3,5×  | 903 KB  |
+| 12MP      | WebP    | 1,2 s    | 8,5 s   | 7,1×  | 1,6 MB  |
+| 12MP      | AVIF    | 8,7 s    | 86,0 s  | 9,9×  | 499 KB  |
+| 12MP      | PNG     | 139 ms   | 1,1 s   | 7,9×  | 30,6 MB |
+| 24MP      | JPEG    | 2,5 s    | 11,2 s  | 4,5×  | 1,8 MB  |
+| 24MP      | WebP    | 2,9 s    | 18,6 s  | 6,4×  | 3,3 MB  |
+| 24MP      | PNG     | 308 ms   | 2,2 s   | 7,1×  | 61,4 MB |
 
 Auxiliares:
 
-| Resolução | Operação | Chromium | Firefox |
-|---|---|---|---|
-| 12MP | resize 0,84 | 1,7 s | 8,9 s |
-| 24MP | resize 0,84 | 3,3 s | 16,3 s |
-| 12MP | oxipng nível 2 | 7,8 s | 32,2 s |
-| 24MP | oxipng nível 2 | 14,4 s | 62,8 s |
-| 12MP | image-q | 24,0 s | 59,5 s |
+| Resolução | Operação       | Chromium | Firefox |
+| --------- | -------------- | -------- | ------- |
+| 12MP      | resize 0,84    | 1,7 s    | 8,9 s   |
+| 24MP      | resize 0,84    | 3,3 s    | 16,3 s  |
+| 12MP      | oxipng nível 2 | 7,8 s    | 32,2 s  |
+| 24MP      | oxipng nível 2 | 14,4 s   | 62,8 s  |
+| 12MP      | image-q        | 24,0 s   | 59,5 s  |
 
 ---
 
@@ -134,11 +134,11 @@ aparecia em lugar nenhum do brief nem do plano.
 Para saber se é o WASM ou o build inteiro, rodei uma linha de base em **JavaScript puro**
 — a geração procedural da imagem de 12MP, laços numéricos sobre typed arrays, sem WASM:
 
-| | Chromium | Firefox | razão |
-|---|---|---|---|
-| `synthPhoto` 12MP (JS puro, numérico) | 265 ms | 351 ms | **1,3×** |
-| `image-q` 12MP (JS puro, alocação pesada) | 21,1 s | 83,0 s | **3,9×** |
-| AVIF 12MP `speed: 6` (WASM) | 9,5 s | 88,9 s | **9,4×** |
+|                                           | Chromium | Firefox | razão    |
+| ----------------------------------------- | -------- | ------- | -------- |
+| `synthPhoto` 12MP (JS puro, numérico)     | 265 ms   | 351 ms  | **1,3×** |
+| `image-q` 12MP (JS puro, alocação pesada) | 21,1 s   | 83,0 s  | **3,9×** |
+| AVIF 12MP `speed: 6` (WASM)               | 9,5 s    | 88,9 s  | **9,4×** |
 
 **Conclusão: não é o build.** Em JS numérico apertado o Firefox está a 1,3× — normal. A
 diferença explode no WASM (9×) e no JS pesado em alocação (4×). É característica de
@@ -166,11 +166,11 @@ Três coisas entram no plano:
 
 Imagem de 12MP, qualidade nominal 50:
 
-| `speed` | Chromium | Firefox | Bytes |
-|---|---|---|---|
-| 6 (equivalente ao plano original) | 9,5 s | 88,9 s | 511.011 |
-| **8** | **1,5 s** | **13,6 s** | 443.011 |
-| 10 | 1,1 s | 10,8 s | 453.221 |
+| `speed`                           | Chromium  | Firefox    | Bytes   |
+| --------------------------------- | --------- | ---------- | ------- |
+| 6 (equivalente ao plano original) | 9,5 s     | 88,9 s     | 511.011 |
+| **8**                             | **1,5 s** | **13,6 s** | 443.011 |
+| 10                                | 1,1 s     | 10,8 s     | 453.221 |
 
 `speed: 8` é **6,3× mais rápido no Chromium e 6,5× no Firefox**, e o arquivo sai 13%
 menor. Os bytes foram idênticos nos dois navegadores — o encoder é determinístico.
@@ -192,11 +192,11 @@ carta na manga se o AVIF voltar a incomodar.
 
 PNG de 12MP, 32.121.820 bytes sem otimizar:
 
-| Nível | Chromium | Firefox | Bytes | Redução |
-|---|---|---|---|---|
-| 1 | **4,4 s** | **14,1 s** | 15.689.685 | 51,2% |
-| 2 (o que o plano previa) | 7,1 s | 30,7 s | 15.678.017 | 51,2% |
-| 3 | 21,3 s | 87,8 s | 15.255.280 | 52,5% |
+| Nível                    | Chromium  | Firefox    | Bytes      | Redução |
+| ------------------------ | --------- | ---------- | ---------- | ------- |
+| 1                        | **4,4 s** | **14,1 s** | 15.689.685 | 51,2%   |
+| 2 (o que o plano previa) | 7,1 s     | 30,7 s     | 15.678.017 | 51,2%   |
+| 3                        | 21,3 s    | 87,8 s     | 15.255.280 | 52,5%   |
 
 O nível 2 custa **62% mais tempo no Chromium e 118% mais no Firefox** para entregar
 0,07% menos bytes. O nível 3 custa 5× o nível 1 por 1,3 ponto percentual.
@@ -205,9 +205,9 @@ O nível 2 custa **62% mais tempo no Chromium e 118% mais no Firefox** para entr
 
 ### 5.3 image-q: funciona, mas o preço é alto — precisa da sua decisão
 
-| Variante (12MP) | Chromium | Firefox |
-|---|---|---|
-| Paleta completa + dithering padrão | 21,1 s | 83,0 s |
+| Variante (12MP)                    | Chromium   | Firefox    |
+| ---------------------------------- | ---------- | ---------- |
+| Paleta completa + dithering padrão | 21,1 s     | 83,0 s     |
 | Paleta de amostra 1/16 + `nearest` | **13,6 s** | **32,0 s** |
 
 Otimizar ajudou (1,6× no Chromium, 2,6× no Firefox), mas **13,6 s por imagem no melhor
@@ -226,19 +226,19 @@ com entrada PNG, **e** puxa a qualidade abaixo de 88.
 Testei substituir a busca binária pelo `target_size` nativo do libwebp, que eu havia
 sinalizado na Etapa 1 como possível ganho grande. Imagem de 12MP:
 
-| Meta | Método | Chromium | Firefox | Encodes | Resultado |
-|---|---|---|---|---|---|
-| 1 MB | busca binária (7 fixos) | 9,4 s | 61,1 s | 7 | 1024 KB — 100,0% da meta |
-| 1 MB | busca com saída antecipada | 10,2 s | 49,3 s | 6 | 1024 KB — idêntico |
-| 1 MB | `target_size` nativo | 5,9 s | 39,2 s | 1 | 1016 KB — 99,2% |
-| 0,5 MB | busca binária (7 fixos) | 7,2 s | 51,4 s | 7 | 495 KB — 96,6% |
-| 0,5 MB | busca com saída antecipada | 6,2 s | 42,8 s | 6 | 495 KB — idêntico |
-| 0,5 MB | `target_size` nativo | 5,9 s | 34,6 s | 1 | **513 KB — 100,2%** ❌ |
+| Meta   | Método                     | Chromium | Firefox | Encodes | Resultado                |
+| ------ | -------------------------- | -------- | ------- | ------- | ------------------------ |
+| 1 MB   | busca binária (7 fixos)    | 9,4 s    | 61,1 s  | 7       | 1024 KB — 100,0% da meta |
+| 1 MB   | busca com saída antecipada | 10,2 s   | 49,3 s  | 6       | 1024 KB — idêntico       |
+| 1 MB   | `target_size` nativo       | 5,9 s    | 39,2 s  | 1       | 1016 KB — 99,2%          |
+| 0,5 MB | busca binária (7 fixos)    | 7,2 s    | 51,4 s  | 7       | 495 KB — 96,6%           |
+| 0,5 MB | busca com saída antecipada | 6,2 s    | 42,8 s  | 6       | 495 KB — idêntico        |
+| 0,5 MB | `target_size` nativo       | 5,9 s    | 34,6 s  | 1       | **513 KB — 100,2%** ❌   |
 
 Dois motivos para rejeitar:
 
 1. **Ele estoura a meta.** Na meta de 0,5 MB entregou 513 KB contra um alvo de 512 KB.
-   Uma funcionalidade chamada "meta de tamanho" que devolve arquivo *acima* da meta está
+   Uma funcionalidade chamada "meta de tamanho" que devolve arquivo _acima_ da meta está
    quebrada, mesmo que por 1 KB. O libwebp trata `target_size` como alvo aproximado; nós
    precisamos de um teto.
 2. **O ganho é bem menor do que eu supus.** 1,6× no Chromium, não 7×, porque o libwebp
@@ -265,11 +265,11 @@ Lote de **50 fotos de 12MP**, modo `smart` (→ WebP), modo automático, com poo
 workers e o orçamento de memória de 48 MP do `PLANO.md` §2.1 (que limita a 4
 simultâneas):
 
-| | Chromium | Firefox |
-|---|---|---|
-| Por imagem (decode + 1 encode) | ~1,5 s | ~8,7 s |
-| **Lote de 50, 4 simultâneas** | **~19 s** | **~109 s** |
-| Lote de 50, 8 simultâneas | ~9 s | ~55 s |
+|                                | Chromium  | Firefox    |
+| ------------------------------ | --------- | ---------- |
+| Por imagem (decode + 1 encode) | ~1,5 s    | ~8,7 s     |
+| **Lote de 50, 4 simultâneas**  | **~19 s** | **~109 s** |
+| Lote de 50, 8 simultâneas      | ~9 s      | ~55 s      |
 
 O modo automático costuma resolver em **um encode** quando há conversão de formato — o
 resultado em WebP já é menor que o JPEG de origem no primeiro degrau. É o caminho comum
@@ -282,10 +282,10 @@ real, em vez de fixar no chute que fiz no plano.
 
 Pior caso do modo meta (meta inatingível, 8 níveis de escala), uma imagem de 12MP:
 
-| | Chromium | Firefox |
-|---|---|---|
-| App Electron (re-decodifica a cada tentativa) | ~106 s | — |
-| Nosso motor (decode único + cache de escala) | ~82 s | ~305 s |
+|                                               | Chromium | Firefox |
+| --------------------------------------------- | -------- | ------- |
+| App Electron (re-decodifica a cada tentativa) | ~106 s   | —       |
+| Nosso motor (decode único + cache de escala)  | ~82 s    | ~305 s  |
 
 Mesmo com WASM mais lento que libvips, **o modo meta fica mais rápido que o app desktop
 no Chromium**, porque o desktop re-decodifica o arquivo até 56 vezes e nós decodificamos
@@ -297,16 +297,16 @@ uma. No Firefox o pior caso é ruim o bastante para justificar a guarda de tempo
 
 Correções a aplicar quando o plano for atualizado (não editei o documento ainda):
 
-| § | Estava | Fica |
-|---|---|---|
+| §   | Estava                           | Fica                                                                                           |
+| --- | -------------------------------- | ---------------------------------------------------------------------------------------------- |
 | 3.2 | "ordens de grandeza mais rápido" | 1,0–2,8× no Chromium, 2,9–6,9× no Firefox. A justificativa passa a ser bundle + EXIF + Firefox |
-| 3.1 | Saída antecipada economiza ~30% | ~14% (1 encode em 7), validada como output-idêntica |
-| 3.4 | oxipng nível 2 | **nível 1** — mesmos bytes, 40–55% mais rápido |
-| 3.6 | AVIF `speed`/`effort` padrão | **`speed: 8`** — 6,3× mais rápido |
-| 2.1 | Orçamento de 48 MP | **96 MP**, a afinar no Incremento 4 |
-| 3.1 | Tolerância de ±10% vs Electron | Mantida para JPEG/WebP/PNG. **AVIF fica fora da banda** — ver abaixo |
-| — | — | **Novo:** guarda de orçamento de tempo por arquivo (20 s) |
-| — | — | **Novo:** tabela de degradação do Firefox no README |
+| 3.1 | Saída antecipada economiza ~30%  | ~14% (1 encode em 7), validada como output-idêntica                                            |
+| 3.4 | oxipng nível 2                   | **nível 1** — mesmos bytes, 40–55% mais rápido                                                 |
+| 3.6 | AVIF `speed`/`effort` padrão     | **`speed: 8`** — 6,3× mais rápido                                                              |
+| 2.1 | Orçamento de 48 MP               | **96 MP**, a afinar no Incremento 4                                                            |
+| 3.1 | Tolerância de ±10% vs Electron   | Mantida para JPEG/WebP/PNG. **AVIF fica fora da banda** — ver abaixo                           |
+| —   | —                                | **Novo:** guarda de orçamento de tempo por arquivo (20 s)                                      |
+| —   | —                                | **Novo:** tabela de degradação do Firefox no README                                            |
 
 **Sobre a fidelidade do AVIF.** Com `speed: 8` o AVIF se afasta mais do app Electron que
 os demais formatos — o Sharp usava `effort: 5`, mais próximo de `speed: 6`. O ganho de
@@ -322,7 +322,7 @@ Você aprovou o `image-q` na Etapa 2 com base na minha estimativa de custo. A me
 mostrou que o custo é maior do que eu supunha: **13,6 s por imagem de 12MP no Chromium,
 32 s no Firefox**, já na variante otimizada. Por isso devolvo a decisão com dados.
 
-**A — Escrever nosso próprio quantizador** *(minha recomendação)*
+**A — Escrever nosso próprio quantizador** _(minha recomendação)_
 Histograma sobre amostra → median cut → LUT de 15 bits (32.768 entradas) → aplicação por
 lookup direto. A etapa de aplicação vira O(n) com uma consulta por pixel, e a estimativa
 é de **200–400 ms a 12MP** — cerca de 40× mais rápido que o `image-q`. São ~120 linhas,
@@ -345,14 +345,14 @@ o custo, e o código é pequeno e testável. Diga se prefere B ou C.
 
 ## 9. Riscos de §11 do plano, reavaliados
 
-| Risco | Situação após o spike |
-|---|---|
-| AVIF lento demais | **Resolvido** com `speed: 8` (§5.1) |
-| WASM do jSquash não empacotar bem | **Resolvido** para Vite/Rollup — build limpa, `.wasm` emitidos, codecs funcionam dentro de Worker. Turbopack ainda a verificar no Incremento 1 |
-| Safari com limites de memória menores | **Em aberto** — o Playwright/WebKit não foi medido aqui. Vai para o Incremento 1 |
-| `image-q` lento em imagens grandes | **Confirmado, pior que o previsto** — §8 |
-| — | **Novo:** desempenho do Firefox (§4) |
-| — | **Novo:** o `@jsquash/avif` quebrou uma vez no Firefox sob pressão de memória, ao instanciar o módulo pela segunda vez. Não reproduziu na segunda tentativa. O pool precisa tratar falha de worker com retry — já previsto em §2.2, agora com motivo concreto |
+| Risco                                 | Situação após o spike                                                                                                                                                                                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AVIF lento demais                     | **Resolvido** com `speed: 8` (§5.1)                                                                                                                                                                                                                           |
+| WASM do jSquash não empacotar bem     | **Resolvido** para Vite/Rollup — build limpa, `.wasm` emitidos, codecs funcionam dentro de Worker. Turbopack ainda a verificar no Incremento 1                                                                                                                |
+| Safari com limites de memória menores | **Em aberto** — o Playwright/WebKit não foi medido aqui. Vai para o Incremento 1                                                                                                                                                                              |
+| `image-q` lento em imagens grandes    | **Confirmado, pior que o previsto** — §8                                                                                                                                                                                                                      |
+| —                                     | **Novo:** desempenho do Firefox (§4)                                                                                                                                                                                                                          |
+| —                                     | **Novo:** o `@jsquash/avif` quebrou uma vez no Firefox sob pressão de memória, ao instanciar o módulo pela segunda vez. Não reproduziu na segunda tentativa. O pool precisa tratar falha de worker com retry — já previsto em §2.2, agora com motivo concreto |
 
 ---
 

@@ -1,0 +1,198 @@
+@import 'tailwindcss';
+
+/* O modo escuro é controlado por [data-theme] no <html>, não só por
+   prefers-color-scheme: o design system prevê um alternador explícito
+   (o brand board mostra o botão "Modo escuro" na barra superior).
+   O ThemeScript de app/layout.tsx sempre resolve o atributo antes da pintura. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ---------------------------------------------------------------------------
+   Tokens do design system.
+   Fonte: docs/brand/Compressify Brand Board.dc.html
+   Desvios deliberados: docs/brand/DESVIOS.md
+   --------------------------------------------------------------------------- */
+@theme {
+  /* -- neutros -- */
+  --color-ink: #0b0d0c;
+  --color-graphite: #1a1d1b;
+  --color-slate: #6b716d;
+  --color-line: #e3e6e2;
+  --color-paper: #f7f8f5;
+  --color-white: #ffffff;
+
+  /* -- acento primário: "espaço recuperado" -- */
+  --color-signal: #00d47e;
+  --color-signal-deep: #04624a;
+
+  /* -- acento secundário: máximo 1 uso por tela -- */
+  --color-ember: #ff5a36;
+
+  /* -- estados -- */
+  --color-success: #00d47e;
+  --color-warning: #ffb020;
+  --color-error: #ff4d4d;
+
+  /* -- emendas de acessibilidade (docs/brand/DESVIOS.md) --
+     Estes três tokens existem porque os valores originais do board reprovam
+     no WCAG AA. Não substituem os de cima: convivem com eles, cada um no
+     contexto em que é seguro. */
+  --color-on-signal: #023b2c; /* texto sobre Signal — 6,44:1  (board: #04624A, 3,76:1) */
+  --color-slate-dark: #8a908c; /* texto secundário no escuro — 5,99:1 sobre Ink (board: #6B716D, 3,91:1) */
+  --color-error-text: #d93030; /* mensagem de erro sobre claro — 4,54:1 (board: #FF4D4D, 3,27:1) */
+
+  /* -- tipografia -- */
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  /* Escala do board. O tracking é por nível, não global — o brief citava
+     -0.035em para tudo, mas o board usa valores distintos por tamanho. */
+  --text-display: 3.5rem; /* 56px */
+  --text-display--line-height: 3.75rem; /* 60px */
+  --text-display--letter-spacing: -0.04em;
+  --text-display--font-weight: 700;
+
+  --text-h1: 2.5rem; /* 40px */
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.035em;
+  --text-h1--font-weight: 700;
+
+  --text-h2: 1.75rem; /* 28px */
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.025em;
+  --text-h2--font-weight: 600;
+
+  --text-h3: 1.25rem; /* 20px — Inter, não Bricolage */
+  --text-h3--line-height: 1.35;
+  --text-h3--letter-spacing: -0.01em;
+  --text-h3--font-weight: 600;
+
+  --text-body: 1rem; /* 16px */
+  --text-body--line-height: 1.625rem; /* 26px */
+
+  --text-small: 0.875rem; /* 14px */
+  --text-small--line-height: 1.45;
+
+  --text-caption: 0.75rem; /* 12px */
+  --text-caption--line-height: 1.4;
+  --text-caption--letter-spacing: 0.02em;
+  --text-caption--font-weight: 500;
+
+  --text-data: 0.875rem; /* 14px — sempre JetBrains Mono, tabular */
+  --text-data--line-height: 1.4;
+
+  /* Rótulo de seção: 11-12px, 600, tracking largo, caixa alta */
+  --text-eyebrow: 0.6875rem; /* 11px */
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.14em;
+  --text-eyebrow--font-weight: 600;
+
+  /* -- raios, medidos no board -- */
+  --radius-card: 14px;
+  --radius-block: 12px;
+  --radius-file: 10px;
+  --radius-button: 9px;
+  --radius-thumb: 8px;
+  --radius-badge: 6px;
+  --radius-pill: 999px;
+
+  /* -- alturas de controle, medidas no board -- */
+  --spacing-control: 42px;
+  --spacing-control-sm: 34px;
+  --spacing-control-nav: 32px;
+  --spacing-seal: 30px;
+  --spacing-badge: 26px;
+
+  /* -- superfícies tingidas de Signal (o board usa alfa, não tokens sólidos) -- */
+  --color-signal-tint: color-mix(in srgb, var(--color-signal) 7%, transparent);
+  --color-signal-tint-strong: color-mix(in srgb, var(--color-signal) 12%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+   Superfícies semânticas: um par de tokens por papel, resolvido por tema.
+   Os componentes usam estes, nunca os neutros crus — é o que mantém o modo
+   escuro completo em vez de um afterthought.
+   --------------------------------------------------------------------------- */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+}
+
+:root {
+  --surface: var(--color-paper);
+  --surface-raised: var(--color-white);
+  --border: var(--color-line);
+  --text: var(--color-ink);
+  --text-muted: var(--color-slate);
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --surface: var(--color-ink);
+  --surface-raised: var(--color-graphite);
+  /* O board não tem token de borda para o escuro: a borda é o próprio Graphite. */
+  --border: var(--color-graphite);
+  --text: var(--color-white);
+  --text-muted: var(--color-slate-dark); /* emenda de contraste */
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Números e nomes de arquivo são obrigatoriamente tabulares: sem isso as
+     porcentagens dançam enquanto o progresso avança. */
+  .font-mono,
+  code,
+  kbd,
+  samp {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Foco visível em tudo que recebe teclado. Requisito de acessibilidade do
+     brief §7, e não pode depender de cada componente lembrar de aplicar. */
+  :focus-visible {
+    outline: 2px solid var(--color-signal-deep);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  [data-theme='dark'] :focus-visible {
+    outline-color: var(--color-signal);
+  }
+
+  ::selection {
+    background-color: var(--color-signal);
+    color: var(--color-on-signal);
+  }
+}
+
+/* prefers-reduced-motion respeitado globalmente — exigência do brief §7. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -15,13 +15,13 @@
 
 Quatro pontos ficaram abertos na Etapa 1. Três foram respondidos e um foi delegado a mim.
 
-| # | Questão | Decisão |
-|---|---|---|
-| 1 | PNG com perda | **Aprovado.** Entra `image-q` para quantização. Detalhe em §3.4 |
-| 2 | Contrastes do design system | **Design system é ajustável.** Três emendas em §5 |
-| 3 | Piso de 900px | **Minha escolha:** corrigir para piso real de 900px. Justificativa em §3.3 |
-| 4 | Decodificação | **Minha escolha:** híbrida — nativa primeiro, WASM de fallback. Justificativa em §3.2 |
-| 5 | Quantização PNG (reaberta pelo spike) | **Quantizador próprio**, não `image-q`. Justificativa em §3.4 |
+| #   | Questão                               | Decisão                                                                               |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1   | PNG com perda                         | **Aprovado.** Entra `image-q` para quantização. Detalhe em §3.4                       |
+| 2   | Contrastes do design system           | **Design system é ajustável.** Três emendas em §5                                     |
+| 3   | Piso de 900px                         | **Minha escolha:** corrigir para piso real de 900px. Justificativa em §3.3            |
+| 4   | Decodificação                         | **Minha escolha:** híbrida — nativa primeiro, WASM de fallback. Justificativa em §3.2 |
+| 5   | Quantização PNG (reaberta pelo spike) | **Quantizador próprio**, não `image-q`. Justificativa em §3.4                         |
 
 ---
 
@@ -100,8 +100,8 @@ A estratégia recebe uma função `render` e não sabe o que há do outro lado. 
 injetamos um renderizador sintético com modelo de tamanho conhecido; em produção,
 injetamos os codecs.
 
-Isso é o que torna o critério do brief §7 — *"o algoritmo de busca binária e a lógica de
-meta de tamanho precisam de testes unitários com casos de borda"* — realizável de fato,
+Isso é o que torna o critério do brief §7 — _"o algoritmo de busca binária e a lógica de
+meta de tamanho precisam de testes unitários com casos de borda"_ — realizável de fato,
 sem carregar 3,4 MB de WASM dentro do jsdom.
 
 ### 1.4 Estado — Zustand
@@ -362,11 +362,11 @@ até 56 encodes por imagem.
 
 **A contenção decisiva é o parâmetro `speed`.** Medido em `SPIKE.md` §5.1, a 12MP:
 
-| `speed` | Chromium | Firefox | bytes |
-|---|---|---|---|
-| 6 | 9,5 s | 88,9 s | 511.011 |
+| `speed`         | Chromium  | Firefox    | bytes   |
+| --------------- | --------- | ---------- | ------- |
+| 6               | 9,5 s     | 88,9 s     | 511.011 |
 | **8 ← adotado** | **1,5 s** | **13,6 s** | 443.011 |
-| 10 | 1,1 s | 10,8 s | 453.221 |
+| 10              | 1,1 s     | 10,8 s     | 453.221 |
 
 `speed: 8` é 6,3× mais rápido e é o que torna o AVIF viável. O arquivo sai 13% menor,
 mas isso não é ganho gratuito: cada preset de velocidade interpreta a qualidade nominal
@@ -433,11 +433,11 @@ argumento se inverte.
 
 Três caminhos, todos preservando caminho relativo quando existe:
 
-| Caminho | Mecanismo | Estrutura relativa |
-|---|---|---|
-| Arrastar arquivos | `DataTransfer.files` | — |
-| Arrastar **pastas** | `DataTransferItem.webkitGetAsEntry()` + varredura recursiva | preservada |
-| Botão "selecionar" | `<input type="file" webkitdirectory multiple>` → `webkitRelativePath` | preservada |
+| Caminho             | Mecanismo                                                             | Estrutura relativa |
+| ------------------- | --------------------------------------------------------------------- | ------------------ |
+| Arrastar arquivos   | `DataTransfer.files`                                                  | —                  |
+| Arrastar **pastas** | `DataTransferItem.webkitGetAsEntry()` + varredura recursiva           | preservada         |
+| Botão "selecionar"  | `<input type="file" webkitdirectory multiple>` → `webkitRelativePath` | preservada         |
 
 É assim que o comportamento de "varredura recursiva preservando a estrutura relativa de
 subpastas" do app desktop sobrevive na web.
@@ -461,11 +461,11 @@ O brand board reprova no WCAG AA em quatro pares que ele efetivamente usa. Com o
 de que o design system não é intocável, aplico o **mínimo necessário**, preservando a
 identidade. Os valores foram calculados, não estimados.
 
-| Onde | Antes | Depois | Contraste |
-|---|---|---|---|
-| Texto sobre Signal (botão primário, badge `−86%`) | `#04624A` — 3,76:1 ❌ | **`#023B2C`** | **6,44:1** ✅ |
-| Slate no modo escuro (texto secundário) | `#6B716D` — 3,91:1 sobre Ink ❌ | **`#8A908C`** | **5,99:1** sobre Ink · 5,22:1 sobre Graphite ✅ |
-| Mensagem de erro em superfície clara | `#FF4D4D` — 3,27:1 ❌ | **`#D93030`** | 4,54:1 ✅ |
+| Onde                                              | Antes                           | Depois        | Contraste                                       |
+| ------------------------------------------------- | ------------------------------- | ------------- | ----------------------------------------------- |
+| Texto sobre Signal (botão primário, badge `−86%`) | `#04624A` — 3,76:1 ❌           | **`#023B2C`** | **6,44:1** ✅                                   |
+| Slate no modo escuro (texto secundário)           | `#6B716D` — 3,91:1 sobre Ink ❌ | **`#8A908C`** | **5,99:1** sobre Ink · 5,22:1 sobre Graphite ✅ |
+| Mensagem de erro em superfície clara              | `#FF4D4D` — 3,27:1 ❌           | **`#D93030`** | 4,54:1 ✅                                       |
 
 Notas:
 
@@ -495,7 +495,7 @@ e o desvio seja rastreável.
   tem token de borda escura separado)
 
 **Ícones:** o board traz 8 SVGs autorais com traço 1,5px. Cinco têm equivalente no
-lucide; três não — *comprimir*, *converter* e *PDF*. Esses três viram componentes
+lucide; três não — _comprimir_, _converter_ e _PDF_. Esses três viram componentes
 próprios em `src/components/icons/`, com o mesmo grid de 24px e traço de 1,5px. Não é
 misturar família: é completar a que já existe.
 
@@ -513,50 +513,50 @@ o typescript-eslint suportar a linha 7.
 **⚠ lucide-react saltou de 0.475 para 1.27.0 e removeu os aliases depreciados.** Cinco
 ícones usados hoje em `App.tsx` **não existem mais**:
 
-| Antes | Agora |
-|---|---|
-| `Loader2` | `LoaderCircle` |
-| `CheckCircle2` | `CircleCheckBig` |
-| `AlertTriangle` | `TriangleAlert` |
-| `XCircle` | `CircleX` |
-| `ImageIcon` | `Image` |
+| Antes           | Agora            |
+| --------------- | ---------------- |
+| `Loader2`       | `LoaderCircle`   |
+| `CheckCircle2`  | `CircleCheckBig` |
+| `AlertTriangle` | `TriangleAlert`  |
+| `XCircle`       | `CircleX`        |
+| `ImageIcon`     | `Image`          |
 
 Sem impacto prático aqui — a UI é nova — mas é a razão pela qual não se pode copiar
 imports do código antigo.
 
 ### 6.2 Runtime
 
-| Pacote | Versão | Papel |
-|---|---|---|
-| `next` | 16.2.12 | App Router, SSG, `output: 'export'` |
-| `react` / `react-dom` | 19.2.8 | |
-| `zustand` | 5.0.14 | Estado da fila |
-| `lucide-react` | 1.27.0 | Ícones ⚠ ver §6.1 |
-| `fflate` | 0.8.3 | ZIP de saída |
-| `@jsquash/jpeg` | 1.6.0 | mozjpeg — enc 246 KB |
-| `@jsquash/png` | 3.1.1 | PNG — 177 KB |
-| `@jsquash/webp` | 1.5.0 | libwebp — enc 275 KB (338 KB SIMD) |
-| `@jsquash/avif` | 2.1.1 | libavif — enc **3,4 MB**, sob demanda |
-| `@jsquash/resize` | 2.1.1 | lanczos3 — 34 KB |
-| `@jsquash/oxipng` | 2.3.0 | Otimização PNG lossless — 160 KB |
+| Pacote                | Versão  | Papel                                 |
+| --------------------- | ------- | ------------------------------------- |
+| `next`                | 16.2.12 | App Router, SSG, `output: 'export'`   |
+| `react` / `react-dom` | 19.2.8  |                                       |
+| `zustand`             | 5.0.14  | Estado da fila                        |
+| `lucide-react`        | 1.27.0  | Ícones ⚠ ver §6.1                     |
+| `fflate`              | 0.8.3   | ZIP de saída                          |
+| `@jsquash/jpeg`       | 1.6.0   | mozjpeg — enc 246 KB                  |
+| `@jsquash/png`        | 3.1.1   | PNG — 177 KB                          |
+| `@jsquash/webp`       | 1.5.0   | libwebp — enc 275 KB (338 KB SIMD)    |
+| `@jsquash/avif`       | 2.1.1   | libavif — enc **3,4 MB**, sob demanda |
+| `@jsquash/resize`     | 2.1.1   | lanczos3 — 34 KB                      |
+| `@jsquash/oxipng`     | 2.3.0   | Otimização PNG lossless — 160 KB      |
 
 ~~`image-q` 4.0.0~~ — **removido após o spike.** A quantização passa a ser código
 próprio (§3.4). Nenhuma dependência a mais entra no lugar.
 
 ### 6.3 Desenvolvimento
 
-| Pacote | Versão | Nota |
-|---|---|---|
-| `typescript` | **6.0.3** | ⚠ não 7.x — ver §6.1 |
-| `tailwindcss` + `@tailwindcss/postcss` | 4.3.3 | tokens via `@theme` |
-| `eslint` | 10.8.0 | |
-| `eslint-config-next` | 16.2.12 | peer `eslint >=9` |
-| `typescript-eslint` | 8.65.0 | peer `typescript >=4.8.4 <6.1.0` |
-| `prettier` | 3.9.6 | |
-| `vitest` | 4.1.10 | |
-| `@testing-library/react` | 16.3.2 | |
-| `jsdom` | 29.1.1 | |
-| `@playwright/test` | 1.62.0 | E2E em Chrome, Firefox e WebKit |
+| Pacote                                 | Versão    | Nota                             |
+| -------------------------------------- | --------- | -------------------------------- |
+| `typescript`                           | **6.0.3** | ⚠ não 7.x — ver §6.1             |
+| `tailwindcss` + `@tailwindcss/postcss` | 4.3.3     | tokens via `@theme`              |
+| `eslint`                               | 10.8.0    |                                  |
+| `eslint-config-next`                   | 16.2.12   | peer `eslint >=9`                |
+| `typescript-eslint`                    | 8.65.0    | peer `typescript >=4.8.4 <6.1.0` |
+| `prettier`                             | 3.9.6     |                                  |
+| `vitest`                               | 4.1.10    |                                  |
+| `@testing-library/react`               | 16.3.2    |                                  |
+| `jsdom`                                | 29.1.1    |                                  |
+| `@playwright/test`                     | 1.62.0    | E2E em Chrome, Firefox e WebKit  |
 
 Nenhuma dependência de analytics, telemetria ou script de terceiros. O produto promete
 privacidade; qualquer script externo contradiz a promessa.
@@ -684,17 +684,17 @@ coisa que encontrei que eu classificaria como urgente, e prefiro dizer.
 Um por vez. Ao fim de cada um: mostro o diff, rodo `npm run check`, e **paro para você
 validar antes de qualquer commit**.
 
-| # | Incremento | Entrega | Por que nesta ordem |
-|---|---|---|---|
-| ~~**0**~~ | ~~**Spike do motor**~~ ✅ **CONCLUÍDO** | [`docs/SPIKE.md`](SPIKE.md) — veredito **GO**, com quatro correções a este plano | Era o maior risco. Resolvido |
-| **1** | Fundação | Next 16 + TS 6 + Tailwind 4 com o `@theme` completo, ESLint/Prettier, `npm run check`, CI, migração do repo (após aprovação) | Base de qualidade antes do código |
-| **2** | Algoritmo puro | `strategy.ts` + `naming.ts` + suíte de testes, **sem WASM** | O ativo do projeto, testado isoladamente |
-| **3** | Motor de imagem | `ImageEngine`: decode híbrido, codecs, resize, quantização PNG | Fecha o motor rodando de verdade |
-| **4** | Concorrência | Worker, pool, orçamento de memória, cancelamento, progresso | Motor virando serviço utilizável |
-| **5** | Fila e UI | Store, Dropzone (com teclado), FileCard, QueueList, ActionBar | O componente-assinatura merece foco isolado |
-| **6** | Saída | Download individual, ZIP em worker, File System Access | |
-| **7** | Acabamento | Landings de SEO, modo escuro completo, a11y, Lighthouse, E2E nos 3 navegadores | |
-| **8** | Documentação | README novo com screenshot, `ARQUITETURA.md` com o diagrama, `ROADMAP.md`, favicon/ícones/OG | Peça de portfólio, escrita com esse peso |
+| #         | Incremento                              | Entrega                                                                                                                      | Por que nesta ordem                         |
+| --------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| ~~**0**~~ | ~~**Spike do motor**~~ ✅ **CONCLUÍDO** | [`docs/SPIKE.md`](SPIKE.md) — veredito **GO**, com quatro correções a este plano                                             | Era o maior risco. Resolvido                |
+| **1**     | Fundação                                | Next 16 + TS 6 + Tailwind 4 com o `@theme` completo, ESLint/Prettier, `npm run check`, CI, migração do repo (após aprovação) | Base de qualidade antes do código           |
+| **2**     | Algoritmo puro                          | `strategy.ts` + `naming.ts` + suíte de testes, **sem WASM**                                                                  | O ativo do projeto, testado isoladamente    |
+| **3**     | Motor de imagem                         | `ImageEngine`: decode híbrido, codecs, resize, quantização PNG                                                               | Fecha o motor rodando de verdade            |
+| **4**     | Concorrência                            | Worker, pool, orçamento de memória, cancelamento, progresso                                                                  | Motor virando serviço utilizável            |
+| **5**     | Fila e UI                               | Store, Dropzone (com teclado), FileCard, QueueList, ActionBar                                                                | O componente-assinatura merece foco isolado |
+| **6**     | Saída                                   | Download individual, ZIP em worker, File System Access                                                                       |                                             |
+| **7**     | Acabamento                              | Landings de SEO, modo escuro completo, a11y, Lighthouse, E2E nos 3 navegadores                                               |                                             |
+| **8**     | Documentação                            | README novo com screenshot, `ARQUITETURA.md` com o diagrama, `ROADMAP.md`, favicon/ícones/OG                                 | Peça de portfólio, escrita com esse peso    |
 
 O Incremento 0 é o único que pode invalidar o plano. Por isso é o primeiro e por isso
 entrega números, não código de produção.
@@ -703,15 +703,15 @@ entrega números, não código de produção.
 
 ## 11. Riscos abertos
 
-| Risco | Situação | Mitigação |
-|---|---|---|
-| AVIF lento demais | ✅ **Resolvido** | `speed: 8` — 6,3× mais rápido (§3.6) |
-| WASM do jSquash não empacotar bem | 🟡 **Parcial** | Resolvido para Vite/Rollup: build limpa, `.wasm` emitidos, codecs rodam dentro de Worker. **Turbopack ainda a verificar no Incremento 1**. Plano B: copiar para `/public` e usar o `init(url)` que os pacotes expõem |
-| **Desempenho do Firefox (3–10× mais lento)** | 🔴 **Novo, aberto** | Guarda de tempo (§2.2.1), pool adaptativo (§2.1), degradação documentada no README |
-| `eslint-config-next` 16 com ESLint 10 | 🟡 Aberto | Peer declara `>=9`. Verifico na instalação do Incremento 1 |
-| Safari / WebKit não medido | 🟡 Aberto | Não entrou no spike. Rodar a mesma bateria no WebKit durante o Incremento 1 |
-| Quantizador próprio não atingir 200–400 ms | 🟡 Aberto | Verificar no Incremento 3. Se falhar, volta à mesa com as opções B e C do `SPIKE.md` §8 |
-| `@jsquash/avif` falhou uma vez no Firefox sob pressão de memória | 🟡 Aberto | Retentativa de worker no pool (§2.2) |
+| Risco                                                            | Situação            | Mitigação                                                                                                                                                                                                            |
+| ---------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AVIF lento demais                                                | ✅ **Resolvido**    | `speed: 8` — 6,3× mais rápido (§3.6)                                                                                                                                                                                 |
+| WASM do jSquash não empacotar bem                                | 🟡 **Parcial**      | Resolvido para Vite/Rollup: build limpa, `.wasm` emitidos, codecs rodam dentro de Worker. **Turbopack ainda a verificar no Incremento 1**. Plano B: copiar para `/public` e usar o `init(url)` que os pacotes expõem |
+| **Desempenho do Firefox (3–10× mais lento)**                     | 🔴 **Novo, aberto** | Guarda de tempo (§2.2.1), pool adaptativo (§2.1), degradação documentada no README                                                                                                                                   |
+| `eslint-config-next` 16 com ESLint 10                            | 🟡 Aberto           | Peer declara `>=9`. Verifico na instalação do Incremento 1                                                                                                                                                           |
+| Safari / WebKit não medido                                       | 🟡 Aberto           | Não entrou no spike. Rodar a mesma bateria no WebKit durante o Incremento 1                                                                                                                                          |
+| Quantizador próprio não atingir 200–400 ms                       | 🟡 Aberto           | Verificar no Incremento 3. Se falhar, volta à mesa com as opções B e C do `SPIKE.md` §8                                                                                                                              |
+| `@jsquash/avif` falhou uma vez no Firefox sob pressão de memória | 🟡 Aberto           | Retentativa de worker no pool (§2.2)                                                                                                                                                                                 |
 
 ---
 

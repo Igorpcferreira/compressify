@@ -1,59 +1,46 @@
 {
   "name": "compressify",
-  "version": "1.0.0",
-  "description": "Aplicativo desktop moderno para comprimir fotos individuais ou diretórios inteiros.",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Compressão e conversão de arquivos em massa, inteiramente no navegador. Nenhum arquivo é enviado para servidor algum.",
   "author": "Igor Ferreira",
-  "main": "./out/main/index.js",
-  "homepage": "./",
+  "license": "MIT",
   "scripts": {
-    "dev": "node scripts/electron-vite-runner.mjs dev",
-    "build": "npm run typecheck && electron-vite build",
-    "preview": "node scripts/electron-vite-runner.mjs preview",
-    "dist": "npm run build && electron-builder --win portable",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest",
+    "test:run": "vitest run --passWithNoTests",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test:run"
   },
   "dependencies": {
-    "@electron-toolkit/preload": "^3.0.1",
-    "@electron-toolkit/utils": "^3.0.0",
-    "lucide-react": "^0.475.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "sharp": "^0.33.5"
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@types/node": "^22.10.10",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
-    "electron": "^34.0.2",
-    "electron-builder": "^25.1.8",
-    "electron-vite": "^3.0.0",
-    "typescript": "^5.7.3",
-    "vite": "^6.0.7"
+    "@tailwindcss/postcss": "4.3.3",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "24.9.2",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.4",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.12",
+    "jsdom": "29.1.1",
+    "prettier": "3.9.6",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.65.0",
+    "vitest": "4.1.10"
   },
-  "build": {
-    "appId": "com.igorferreira.compressify",
-    "productName": "Compressify",
-    "copyright": "Copyright © 2026 Igor Ferreira",
-    "icon": "build/icon.png",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "out/**/*",
-      "node_modules/sharp/**/*",
-      "node_modules/@img/**/*"
-    ],
-    "asarUnpack": [
-      "node_modules/sharp/**/*",
-      "node_modules/@img/**/*"
-    ],
-    "win": {
-      "target": [
-        "portable"
-      ],
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "signAndEditExecutable": false
-    }
+  "engines": {
+    "node": ">=20.9.0"
   }
 }
