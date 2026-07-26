@@ -62,9 +62,17 @@ export function QueueWorkspace({ conversion }: QueueWorkspaceProps = {}) {
 
   return (
     <div className="flex flex-col gap-6">
-      <ConversionBar />
+      {/*
+        O dropzone vem primeiro, e o seletor de par logo depois — não antes.
+        A captura do README mostrou por quê: com o seletor no topo, a primeira
+        coisa dentro da ferramenta virava uma pergunta ("para qual formato?")
+        em vez da ação que a página anuncia no `h1` ("arraste seus arquivos").
+        Nas landings de conversão o par já está dito no título e na faixa de
+        destaque, então nada se perde estando aqui.
+      */}
       <Dropzone onFiles={addFiles} />
       <RejectedNotice />
+      <ConversionBar />
       <OptionsPanel />
       <ActionBar />
       <QueueList />
