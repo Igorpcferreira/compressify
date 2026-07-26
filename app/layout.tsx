@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from 'next/font/google'
 import { ThemeScript } from '@/components/theme/ThemeScript'
+import { SITE_URL } from '@/lib/site'
 import './globals.css'
 
 const bricolage = Bricolage_Grotesque({
@@ -25,15 +26,25 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
+  // Sem `metadataBase` o Next resolve as URLs de Open Graph contra localhost e
+  // avisa na build. Ele vem de `lib/site.ts`, que é a única fonte da URL
+  // canônica — o sitemap e o JSON-LD leem a mesma constante.
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Compressify — comprima qualquer arquivo, sem upload',
+    default: 'Compressify — comprima qualquer imagem, sem upload',
     template: '%s · Compressify',
   },
   description:
     'Comprima e converta imagens em massa direto no navegador. Sem upload, sem limite, sem cadastro e sem marca d’água — seus arquivos nunca saem do seu computador.',
   applicationName: 'Compressify',
   authors: [{ name: 'Igor Ferreira' }],
+  creator: 'Igor Ferreira',
   robots: { index: true, follow: true },
+  openGraph: { siteName: 'Compressify', locale: 'pt_BR', type: 'website' },
+  twitter: { card: 'summary_large_image' },
+  // Sem verificação de propriedade, sem pixel, sem nada de terceiros: a
+  // promessa de privacidade vale para o HTML também.
+  formatDetection: { telephone: false },
 }
 
 export const viewport: Viewport = {

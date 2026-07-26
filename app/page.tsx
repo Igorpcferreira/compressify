@@ -1,56 +1,69 @@
 /**
  * A home.
  *
- * Server component de propósito: cabeçalho, herói e rodapé saem no HTML
- * estático, e só a `QueueWorkspace` carrega JavaScript. As landings por
- * ferramenta (`/comprimir-imagem`, `/converter-webp`) são do Incremento 7.
+ * Server component: cabeçalho, herói, FAQ e rodapé saem no HTML estático, e só
+ * a `QueueWorkspace` carrega JavaScript.
  */
 
-import { Logo } from '@/components/brand/Logo'
-import { PrivacyBadge } from '@/components/brand/PrivacyBadge'
-import { QueueWorkspace } from '@/components/queue/QueueWorkspace'
-import { ThemeToggle } from '@/components/theme/ThemeToggle'
+import type { Metadata } from 'next'
+import { StructuredData } from '@/components/landing/StructuredData'
+import { ToolPage, type FaqItem } from '@/components/landing/ToolPage'
+import { canonical } from '@/lib/site'
+
+const DESCRIPTION =
+  'Comprima e converta imagens em massa direto no navegador. Sem upload, sem limite, sem cadastro e sem marca d’água — seus arquivos nunca saem do seu computador.'
+
+export const metadata: Metadata = {
+  description: DESCRIPTION,
+  alternates: { canonical: canonical('/') },
+  openGraph: {
+    title: 'Compressify — comprima qualquer imagem, sem upload',
+    description: DESCRIPTION,
+    url: canonical('/'),
+    type: 'website',
+    locale: 'pt_BR',
+  },
+}
+
+const FAQ: readonly FaqItem[] = [
+  {
+    question: 'Meus arquivos são enviados para algum servidor?',
+    answer:
+      'Não. A compressão acontece dentro do seu navegador, com WebAssembly. O site é uma exportação estática: não existe servidor de processamento para onde enviar nada, e você pode confirmar isso na aba Rede do navegador.',
+  },
+  {
+    question: 'Existe limite de quantidade ou de tamanho?',
+    answer:
+      'Não impomos limite. O que limita é a memória da sua máquina — a fila processa vários arquivos em paralelo respeitando um orçamento de memória, e imagens muito grandes rodam sozinhas para não derrubar a aba.',
+  },
+  {
+    question: 'Quais formatos são aceitos?',
+    answer:
+      'Entrada em JPG, PNG, WebP e AVIF. Saída em qualquer um dos quatro, ou no modo inteligente, que escolhe WebP para tudo e mantém AVIF como AVIF.',
+  },
+  {
+    question: 'Dá para chegar num tamanho específico?',
+    answer:
+      'Sim. No modo Meta você escolhe 5, 10 ou 50 MB — ou um valor livre. O algoritmo faz uma busca binária na qualidade e, se ainda não couber, reduz a resolução em degraus, sem descer abaixo de 900 pixels no menor lado.',
+  },
+]
 
 export default function Home() {
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-6">
-      <header className="border-border flex h-17 items-center justify-between border-b">
-        <Logo />
-        <nav aria-label="Ferramentas" className="flex items-center gap-6">
-          <span className="text-small text-text hidden font-medium sm:inline">Imagens</span>
-          <span className="text-small text-text-muted hidden sm:inline" aria-disabled>
-            PDF
-          </span>
-          <span className="text-small text-text-muted hidden sm:inline" aria-disabled>
-            Vídeo
-          </span>
-          <ThemeToggle />
-        </nav>
-      </header>
-
-      <main className="flex flex-1 flex-col gap-8 py-12">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <PrivacyBadge />
-
-          <h1 className="font-display text-h1 text-balance sm:text-[2.75rem] sm:leading-[1.05]">
+    <>
+      <StructuredData name="Compressify" description={DESCRIPTION} url={canonical('/')} faq={FAQ} />
+      <ToolPage
+        title={
+          <>
             Comprima qualquer imagem.
             <br />
             Sem upload.
-          </h1>
-
-          <p className="text-text-muted max-w-prose text-pretty">
-            Em massa, sem limite, sem cadastro e sem marca d’água. Os arquivos são processados
-            dentro do seu navegador e nunca saem do seu computador.
-          </p>
-        </div>
-
-        <QueueWorkspace />
-      </main>
-
-      <footer className="border-border text-caption text-text-muted flex flex-wrap items-center justify-between gap-3 border-t py-7">
-        <span>Compressify · processamento 100% local</span>
-        <span className="font-mono">JPG · PNG · WEBP · AVIF</span>
-      </footer>
-    </div>
+          </>
+        }
+        plainTitle="Comprimir imagens"
+        description="Em massa, sem limite, sem cadastro e sem marca d’água. Os arquivos são processados dentro do seu navegador e nunca saem do seu computador."
+        faq={FAQ}
+      />
+    </>
   )
 }

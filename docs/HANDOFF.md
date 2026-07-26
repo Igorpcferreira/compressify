@@ -3,13 +3,13 @@
 > Documento de continuidade. Quem retomar o Compressify (pessoa ou sessão nova de
 > IA) deve ler **este arquivo primeiro** e só então mergulhar no `PLANO.md`.
 >
-> Última atualização: 26/07/2026, ao fim do **Incremento 6**. O ciclo fecha:
-> arrastar, comprimir em paralelo com progresso por arquivo, cancelar no meio e
-> **levar o resultado embora** — baixando um a um, em ZIP ou direto numa pasta.
-> Tudo dentro do navegador, sem uma requisição sequer.
+> Última atualização: 26/07/2026, ao fim do **Incremento 7**. O produto está
+> provado: 60 testes E2E comprimem imagens de verdade em Chromium, Firefox e
+> **WebKit** — que nunca tinha sido medido — contra o artefato de deploy.
+> Lighthouse 98 · 100 · 100 · 100 na home. Falta só a documentação (§15).
 >
-> Os Incrementos 3, 4 e 5 já estão comitados. **O Incremento 6 está na árvore,
-> sem commit**, e a mensagem sugerida está em §14.
+> Os Incrementos 3 a 6 já estão comitados. **O Incremento 7 está na árvore, sem
+> commit**, e a mensagem sugerida está em §15.
 
 ---
 
@@ -25,7 +25,7 @@ Estas vieram do brief do Igor e não expiram:
    implementar. O Igor prefere discussão a execução cega — e já mudou de decisão duas
    vezes diante de dados (`image-q`, contrastes do design system).
 4. **Verificar versões antes de fixar dependências.** A data de conhecimento do modelo
-   pode estar defasada. Isso já pegou três armadilhas reais (§10).
+   pode estar defasada. Isso já pegou três armadilhas reais (§11).
 5. **Medir antes de afirmar.** O spike derrubou quatro suposições do plano, duas delas
    minhas. Números > intuição.
 
@@ -44,7 +44,8 @@ e6590df  feat(engine): porta o algoritmo como código puro e testável
 c79a7d8  feat(engine): motor de imagem real, com codecs verificados de ponta a ponta
 0bd318c  feat(engine): concorrência — worker, pool com orçamento de memória e fila
 a6aef39  feat(ui): a fila ganha tela — store, dropzone, cards e preferências
-         ⬅️ o Incremento 6 está na árvore, **sem commit**, aguardando validação
+94023db  feat(saida): download individual, ZIP em worker e salvar em pasta
+         ⬅️ o Incremento 7 está na árvore, **sem commit**, aguardando validação
 ```
 
 | Incremento                                       | Estado                                |
@@ -60,6 +61,8 @@ a6aef39  feat(ui): a fila ganha tela — store, dropzone, cards e preferências
 | 8 — Documentação e ícones                        | pendente                              |
 
 `npm run check` (typecheck + lint + formatação + 309 testes) passa limpo em ~12 s.
+`npm run e2e` roda 60 testes em Chromium, Firefox e WebKit em ~1 min — exige
+`npx playwright install` e um `npm run build` antes.
 `npm run build` gera exportação estática sem nenhuma serverless function — **agora com
 webpack, não Turbopack**. O porquê está na §4.
 
@@ -68,7 +71,9 @@ webpack, não Turbopack**. O porquê está na §4.
 ```
 app/
   layout.tsx          fontes via next/font (auto-hospedadas), metadata, ThemeScript
-  page.tsx            ▲ a home: cabeçalho, herói e o espaço de trabalho
+  page.tsx            ▲ a home
+  comprimir-imagem/ · converter-webp/ · converter-avif/   ◇ landings de SEO
+  sitemap.ts · robots.ts · icon.svg · opengraph-image.tsx ◇ gerados na build
   globals.css         design system inteiro em @theme + camada semântica de tema
 src/
   components/theme/ThemeScript.tsx     resolve o tema antes da primeira pintura
@@ -83,6 +88,8 @@ src/
   lib/download.ts                      ● download individual e nome do ZIP
   lib/archive.ts                       ● conversa com o worker de ZIP
   lib/fsAccess.ts                      ● salvar numa pasta, quando o navegador deixa
+  lib/site.ts                          ◇ a URL canônica, numa fonte só
+  components/landing/                  ◇ ToolPage · StructuredData
   engine/core/types.ts                 contratos (CompressionEngine, JobResult…)
   engine/core/registry.ts              resolve o motor por arquivo
   engine/core/naming.ts                ◆ unicidade de caminho, genérica
@@ -112,10 +119,12 @@ tests/
   helpers/workers.ts                   ◆ workers de mentira, dirigidos pelo teste
   unit/                                303 testes — lógica, com codecs injetados
   integration/engine-codecs.test.ts    6 testes — o motor com os codecs de verdade
+  e2e/                                 ◇ 20 testes × 3 navegadores, contra out/
+  e2e/fixtures.ts                      ◇ PNGs montados à mão, com marcador
 docs/                                  PLANO, SPIKE, HANDOFF, brand/
 ```
 
-`★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6.
+`★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6, `◇` o 7.
 
 Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/07/2026
 (as seis coincidiram com o que o plano previa):
@@ -129,7 +138,7 @@ Dos Incrementos 5 e 6, conferidas contra o `latest` do npm em 26/07/2026 — as 
 bateram com o que o `PLANO.md` §6.2 previa:
 
 ```
-zustand 5.0.14 · lucide-react 1.27.0 · fflate 0.8.3
+zustand 5.0.14 · lucide-react 1.27.0 · fflate 0.8.3 · @playwright/test 1.62.0
 ```
 
 ---
@@ -602,7 +611,107 @@ gzip, e nenhum contém código de codec nem de compactação.
 
 ---
 
-## 10. Armadilhas já encontradas — não repetir
+## 10. O Incremento 7 — a prova
+
+Este é o incremento em que o projeto para de afirmar e passa a demonstrar. Até aqui os
+309 testes rodavam em Node; nenhum deles provava que `Worker`, `createImageBitmap` e
+`.wasm` funcionam juntos dentro de um navegador. Agora **60 testes E2E rodam em Chromium,
+Firefox e WebKit**, contra o artefato de deploy.
+
+### O maior risco do projeto está fechado
+
+🔴 → 🟢. Uma imagem de verdade é comprimida, baixada e verificada nos três motores. E o
+**Safari, que nunca tinha sido medido**, passou em tudo — inclusive AVIF e ZIP.
+
+O E2E roda contra `out/` servido estaticamente, não contra o `next dev`. Dois motivos: é
+o artefato que vai para a Vercel, com os mesmos chunks e os mesmos `.wasm`; e é a única
+forma de o `privacy.spec.ts` afirmar algo, porque no dev existe o websocket de HMR
+poluindo a inspeção de rede.
+
+### O critério de aceite #3 virou teste
+
+`privacy.spec.ts` faz três afirmações independentes, em ordem crescente de força:
+
+1. Nenhuma requisição sai da origem do site.
+2. Nenhuma requisição tem corpo — não existe POST, PUT ou PATCH.
+3. **Nenhum corpo nem URL contém o marcador que está dentro do arquivo de teste.** É a
+   que pega o caso esperto: um upload disfarçado de GET com os bytes na query também
+   falharia.
+
+Mais uma quarta, estrutural: um POST em `/api/upload` não encontra nada, porque não
+existe function no deploy.
+
+As fixturas são PNGs montados à mão em `tests/e2e/fixtures.ts` — assinatura, IHDR, um
+`tEXt` com o marcador, IDAT via `zlib`. Sem binário no repositório, com ruído de
+fotografia (uma imagem lisa comprimiria a nada e passaria sem exercitar o motor) e com o
+marcador **dentro dos bytes**, que é o que torna a afirmação de privacidade verificável.
+
+### Lighthouse: o que a primeira medição estava medindo
+
+| Momento                          | Performance | Acessibilidade | Boas práticas | SEO     |
+| -------------------------------- | ----------- | -------------- | ------------- | ------- |
+| Primeira medição                 | 80          | 100            | 96            | 100     |
+| Depois de corrigir **o harness** | **98**      | **100**        | **100**       | **100** |
+
+A diferença não foi otimização de página: a maior "oportunidade" apontada eram **378 KB
+de compressão de texto** que o meu servidor de teste não fazia e a Vercel faz. Medir sem
+gzip reprovava o harness, não o produto. O `scripts/serve-out.mjs` passou a comprimir, e
+o número virou representativo.
+
+Os 4 pontos de boas práticas eram um 404 de `favicon.ico` — resolvido com `app/icon.svg`,
+que também era item do Incremento 8 e veio junto porque estava sujando a medição.
+
+`/comprimir-imagem/` marca 95 · 100 · 100. A diferença para a home é a página ser mais
+longa, não mais pesada.
+
+### O que os testes E2E cobrem
+
+- **`queue.spec.ts`** (7) — lote com ganho por arquivo, progresso individual com a aba
+  respondendo (`requestAnimationFrame` em menos de 2 s enquanto os workers trabalham),
+  cancelamento no meio, ZIP com assinatura `PK` verificada, download individual
+  com o nome de saída, recusa de TIFF com motivo, e conversão para AVIF.
+- **`privacy.spec.ts`** (2) — acima.
+- **`a11y.spec.ts`** (11) — título, `h1` único e marcos em cada rota; o conteúdo presente
+  **com JavaScript desligado**; o pulo para a ferramenta; a fila inteira operada só com
+  teclado (setas trocam formato, setas movem a qualidade, Enter comprime); nome acessível
+  em todo botão; `aria-valuenow` na barra de progresso; o tema sobrevivendo ao
+  recarregamento; e a imagem de Open Graph respondendo como PNG.
+
+### Duas diferenças de navegador que valem registro
+
+1. **O WebKit não põe links na ordem de Tab** a menos que "Acesso total pelo teclado"
+   esteja ligado no sistema. É configuração do usuário, não do documento — o teste
+   verifica a posição onde isso vale e, em todo lugar, o que depende de nós: o link
+   recebe foco, aparece ao focar e leva à ferramenta.
+2. **`blob:` não é rede.** O WebKit registra o carregamento do worker e o download por
+   esse esquema. Uma URL de blob resolve contra o armazenamento em memória do próprio
+   navegador — não existe socket. Contá-la como "requisição externa" seria confundir o
+   mecanismo com um vazamento; o teste isola os esquemas locais e mantém todo http(s)
+   sob a régua.
+
+### SEO, sem script de terceiros
+
+Três landings (`/comprimir-imagem`, `/converter-webp`, `/converter-avif`), cada uma com
+`metadata` própria, canônica, Open Graph, FAQ visível e o mesmo FAQ em JSON-LD — dado
+estruturado que não corresponde ao conteúdo é penalizado, e com razão. Mais `sitemap.xml`
+e `robots.txt` gerados na build, e a imagem de compartilhamento gerada por `ImageResponse`
+**no momento do build**, sem function no deploy.
+
+O corpo das quatro páginas é um componente só (`ToolPage`): quatro cópias do layout seria
+convidar as quatro a divergirem.
+
+### Uma armadilha do artefato
+
+As rotas de metadata do Next saem **sem extensão** na exportação estática
+(`out/opengraph-image`). Um host que decide o `Content-Type` pelo sufixo entrega
+`application/octet-stream`, e o cartão de compartilhamento não renderiza em lugar nenhum —
+erro que só aparece quando alguém compartilha o link. O servidor de teste passou a
+farejar os bytes mágicos, e há um teste E2E que falha se a imagem deixar de responder
+como PNG. **Ao trocar de host, confirmar esse cabeçalho.**
+
+---
+
+## 11. Armadilhas já encontradas — não repetir
 
 | Armadilha                     | O que aconteceu                                                                                                                                                                                                                                    |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -624,7 +733,7 @@ gzip, e nenhum contém código de codec nem de compactação.
 
 ---
 
-## 11. Decisões de produto que já foram fechadas com o Igor
+## 12. Decisões de produto que já foram fechadas com o Igor
 
 Não reabrir sem motivo novo:
 
@@ -646,121 +755,138 @@ Não reabrir sem motivo novo:
 
 ---
 
-## 12. Riscos ainda abertos
+## 13. Riscos ainda abertos
 
-| Risco                                                                                    | Situação                                                                                     |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **Nada foi comprimido dentro de um navegador de verdade**                                | 🔴 **O maior risco aberto** — E2E no Incremento 7; até lá, `npm run dev` e arrastar uma foto |
-| Turbopack não empacota os codecs multi-thread                                            | 🟢 **Contornado** com `--webpack` — revisitar no futuro                                      |
-| Quantizador próprio não atingir o custo estimado                                         | 🟢 **Fechado** — 92 ms a 12MP, melhor que a estimativa                                       |
-| Turbopack com os workers (`next dev`)                                                    | 🟢 **Fechado** — compila e serve a home com o pool no grafo (§8)                             |
-| Safari/WebKit nunca medido                                                               | 🟡 Incremento 7                                                                              |
-| Orçamento de 96 MP em voo continua estimativa, não medição                               | 🟡 Incremento 7 — a aritmética está testada; falta memória real de navegador                 |
-| Firefox lento pode exigir ajuste do teto de 20 s por job                                 | 🟡 Incremento 7                                                                              |
-| Deploy carrega `.wasm` que nunca usamos (`avif_enc_mt` de 3,4 MB, `hqx`, `magic-kernel`) | 🟡 Incremento 7 — não afetam o carregamento inicial, só o tamanho do deploy                  |
-| ZIP acima de 4 GB no total (fflate sem ZIP64)                                            | 🟡 Irrelevante para imagens; revisitar na Fase 3 (§9)                                        |
+| Risco                                                                                 | Situação                                                                                   |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Nada foi comprimido dentro de um navegador de verdade                                 | 🟢 **Fechado** — 60 testes E2E em Chromium, Firefox e WebKit (§10)                         |
+| Safari/WebKit nunca medido                                                            | 🟢 **Fechado** — passa em tudo, inclusive AVIF e ZIP (§10)                                 |
+| Turbopack não empacota os codecs multi-thread                                         | 🟢 **Contornado** com `--webpack` — revisitar no futuro                                    |
+| Quantizador próprio não atingir o custo estimado                                      | 🟢 **Fechado** — 92 ms a 12MP, melhor que a estimativa                                     |
+| Turbopack com os workers (`next dev`)                                                 | 🟢 **Fechado** — compila e serve a home com o pool no grafo (§8)                           |
+| Lighthouse ≥ 90                                                                       | 🟢 **Fechado** — 98 · 100 · 100 · 100 na home, 95 · 100 · 100 na landing (§10)             |
+| Orçamento de 96 MP em voo continua estimativa, não medição                            | 🟡 A aritmética está testada e o E2E não travou nenhuma aba; falta medir memória real      |
+| Firefox lento pode exigir ajuste do teto de 20 s por job                              | 🟡 Nenhum job estourou o teto no E2E, mas com fixturas modestas — refazer com foto de 12MP |
+| Deploy carrega `.wasm` que nunca usamos (`avif_enc_mt` 3,4 MB, `hqx`, `magic-kernel`) | 🟡 **Avaliado e deixado como está** — ver abaixo                                           |
+| ZIP acima de 4 GB no total (fflate sem ZIP64)                                         | 🟡 Irrelevante para imagens; revisitar na Fase 3 (§9)                                      |
+| Cabeçalho da imagem de OG em host que não seja a Vercel                               | 🟡 Há teste E2E, mas ele mede o servidor local — conferir depois do primeiro deploy (§10)  |
+
+**Sobre os 3,4 MB do `avif_enc_mt`:** dá para tirá-los com uma regra de substituição de
+módulo no webpack, e a economia seria 28% do deploy (12 MB no total). Não fiz, e a razão
+é proporção: esses arquivos **nunca são baixados pelo usuário** — só entrariam em ação
+com `crossOriginIsolated`, que exige COOP/COEP e nós não ligamos. O custo é armazenamento
+no host, não banda de quem usa. Interceptar a resolução de módulos de um pacote que
+acabou de ser provado ponta a ponta nos três navegadores, para economizar espaço que
+ninguém paga, é risco sem retorno. **O gatilho para revisitar é a Fase 3**, quando o
+`ffmpeg.wasm` exigir COOP/COEP e essas variantes deixarem de ser código morto.
 
 ---
 
-## 13. Critérios de aceite da Fase 1 — rastreamento
+## 14. Critérios de aceite da Fase 1 — rastreamento
 
 Do brief original, com o estado de cada um:
 
-- [ ] 50 imagens em paralelo com progresso individual — **implementado de ponta a ponta**;
-      falta rodar num navegador de verdade (Incremento 7)
-- [ ] Modo meta equivalente ao Electron (±10%, AVIF excluído) — motor pronto e verificado;
-      falta a comparação com as fixtures do app Electron, no Incremento 7
-- [ ] Nenhuma requisição carregando conteúdo do usuário — `privacy.spec.ts`, Incremento 7
-- [ ] A aba não trava — pixels só em worker (inclusive o `probe`) e a invariante de
-      re-render da store está sob teste; medir de fato no 7
+- [x] 50 imagens em paralelo com progresso individual — E2E comprime lotes com progresso
+      por arquivo nos três navegadores
+- [ ] Modo meta equivalente ao Electron (±10%, AVIF excluído) — motor pronto e verificado
+      em Node e em navegador; falta a comparação numérica com as saídas do app Electron
+      sobre as mesmas imagens. **É o único critério que continua aberto**
+- [x] Nenhuma requisição carregando conteúdo do usuário — `privacy.spec.ts` verifica
+      origem, corpo e o marcador dentro do arquivo, nos três navegadores
+- [x] A aba não trava — o E2E mede `requestAnimationFrame` durante o lote e exige
+      resposta em menos de 2 s
 - [x] Cancelar a fila no meio — botão na `ActionBar`, `cancelAll` com terminação de
       worker preso, e cancelamento por arquivo no card
 - [x] Baixar tudo em ZIP — worker dedicado, método stored, árvore preservada; o teste
       monta e descompacta um ZIP de verdade
-- [ ] Chrome, Firefox e Safari com degradação documentada — Incremento 7
-- [ ] Lighthouse > 90 em Performance e Acessibilidade — Incremento 7; o bundle inicial
-      está em 7 scripts (568,6 KB sem gzip) sem uma linha de codec nem de fflate
+- [x] Chrome, Firefox e Safari — 60 testes passando nos três; as duas diferenças de
+      comportamento estão documentadas no §10
+- [x] Lighthouse > 90 em Performance e Acessibilidade — **98 e 100** na home; 95 e 100 na
+      landing. Medido contra o build servido com gzip, como a Vercel serve
 - [x] `npm run check` passa limpo — 309 testes
-- [ ] Modo claro e escuro completos — tokens aplicados em toda a UI e alternador na barra
-      superior; falta a revisão de contraste tela a tela, no 7
+- [x] Modo claro e escuro completos — tokens em toda a UI, alternador na barra superior
+      sem flash, e o E2E verifica que a escolha sobrevive ao recarregamento
 
 ---
 
-## 14. Como retomar
+## 15. Como retomar
 
 ```bash
 cd Compressify
-npm install          # o .npmrc já força o registry público
-npm run check        # deve passar limpo — 309 testes, ~12 s
-npm run dev          # http://localhost:3000 — arraste fotos e baixe o resultado
-npm run build        # exportação estática, via webpack (§4)
+npm install                # o .npmrc já força o registry público
+npm run check              # 309 testes de unidade, ~12 s
+npm run build              # exportação estática, via webpack (§4)
+npx playwright install     # uma vez: baixa Chromium, Firefox e WebKit
+npm run e2e                # 60 testes nos três motores, contra out/
+npm run dev                # http://localhost:3000
 ```
 
-**Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §10.
+**Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §11.
 
-### Antes de qualquer coisa
+### O Incremento 8, em uma frase cada
 
-Abra o `npm run dev`, arraste três ou quatro fotos, clique em **Comprimir tudo** e depois
-em **Baixar tudo (.zip)**. O ciclo inteiro existe em código e está sob 309 testes, mas
-**nenhum deles roda num navegador** — é o único risco 🔴 da tabela do §12, e ele só sai
-de lá com o Playwright do Incremento 7 ou com você olhando.
+É só documentação — o produto está pronto e provado.
 
-### O Incremento 7, em uma frase cada
-
-- **`privacy.spec.ts`** — o critério de aceite #3 vira teste: intercepta toda requisição
-  e falha se qualquer corpo contiver bytes do arquivo de teste. O diferencial do produto
-  passa a rodar em cada PR em vez de ser promessa.
-- **`queue.spec.ts`** — arrastar N imagens, ver progresso individual, cancelar no meio,
-  baixar o ZIP. Em Chrome, Firefox e WebKit. É onde o decode nativo
-  (`createImageBitmap`), o contexto de worker e o Safari finalmente saem do 🟡.
-- **Comparação com o app Electron** — as fixtures do desktop sobre as mesmas imagens,
-  para o critério #2 (±10%, AVIF excluído) deixar de ser subjetivo.
-- **Landings de SEO** — `/comprimir-imagem`, `/converter-webp`, `/converter-avif`, com o
-  `metadata` por rota que o `layout.tsx` já prepara com `template`.
-- **Revisão de contraste tela a tela** nos dois temas, e Lighthouse ≥ 90.
-- **Enxugar o deploy**: `avif_enc_mt` (3,4 MB), `hqx` e `magic-kernel` são emitidos e
-  nunca usados — não pesam no carregamento, mas pesam no bundle publicado.
+- **`README.md`** novo: o que é, por que existe, como roda, com screenshot da tela real e
+  os números medidos (Lighthouse, tamanho do bundle, tempo de lote). O atual ainda
+  descreve o app Electron.
+- **`docs/ARQUITETURA.md`**: o diagrama de `PLANO.md` §1.1 atualizado para o que
+  realmente existe, mais a explicação das quatro camadas — estratégia pura, motor,
+  pool/worker, store — e do porquê cada fronteira é onde é.
+- **`docs/ROADMAP.md`**: Fase 2 (PDF) e Fase 3 (vídeo/áudio) a partir do que já está
+  preparado — o registro de motores resolve por arquivo, e `CompressionEngine` foi
+  mantido genérico exatamente para isso.
+- **Ícones**: `app/icon.svg` e a imagem de Open Graph já entraram no Incremento 7, porque
+  o 404 do favicon estava sujando a medição do Lighthouse. Falta o `apple-icon` e uma
+  varredura de consistência.
+- **O único critério de aceite ainda aberto** (§14): comparar as saídas do modo meta com
+  as do app Electron sobre as mesmas imagens. Precisa das fixturas do desktop, que estão
+  na tag `v1.0.0-electron`.
 
 ### A mensagem de commit sugerida
 
-O Incremento 6 está na árvore, sem commit (`src/engine/workers/zip*`, `src/lib/{archive,
-download,fsAccess}.ts`, as ações de saída da store, `ActionBar`, `FileCard`, e os testes
-`zip`, `archive`, `fs-access`, `download`):
+O Incremento 7 está na árvore, sem commit (`app/{comprimir-imagem,converter-webp,
+converter-avif}`, `app/{sitemap,robots,icon.svg,opengraph-image}`,
+`src/components/landing/`, `src/lib/site.ts`, `playwright.config.ts`,
+`scripts/serve-out.mjs`, `tests/e2e/`, e o job de E2E no CI):
 
 ```
-feat(saida): download individual, ZIP em worker e salvar em pasta
+feat(acabamento): landings de SEO, acessibilidade e E2E nos três navegadores
 
-Fecha o ciclo do produto: o resultado agora sai do navegador por três
-caminhos, nenhum deles passando por servidor. Download individual pelo card,
-"Baixar tudo (.zip)" com worker dedicado, e "Salvar em pasta" onde a File
-System Access API existe — onde não existe, o botão simplesmente não aparece.
+O projeto para de afirmar e passa a demonstrar. 60 testes E2E rodam em
+Chromium, Firefox e WebKit contra a exportação estática — o artefato que vai
+para o deploy, não o dev server. É a primeira vez que uma imagem de verdade é
+comprimida dentro de um navegador neste projeto, e o Safari, que nunca tinha
+sido medido, passa em tudo, inclusive AVIF e ZIP.
 
-O ZIP usa o método stored, não deflate: tudo que entra já saiu de um encoder,
-então recomprimir gastaria CPU proporcional ao lote para ganhar perto de zero.
-Um teste prova a escolha em vez de descrevê-la — 4096 bytes de zeros viram um
-ZIP maior que a entrada. A montagem é em fluxo (Zip + ZipPassThrough), o que
-evita segurar 2x o lote na memória, e os bytes são lidos dentro do worker: a
-thread principal só troca referências de Blob.
+O critério de aceite #3 vira teste: privacy.spec.ts verifica que nenhuma
+requisição sai da origem, que nenhuma tem corpo, e que nem corpo nem URL
+contêm o marcador embutido nos bytes do arquivo de teste. As fixturas são PNGs
+montados à mão, com ruído de fotografia e um chunk tEXt com o marcador — sem
+binário no repositório.
 
-Duas armadilhas viraram regra testada: revogar a object URL logo após o clique
-cancela o download em parte dos navegadores (revoga-se a anterior, nunca a
-atual), e showDirectoryPicker exige o gesto do usuário, então a store chama o
-seletor antes de qualquer await.
+Lighthouse 98/100/100/100 na home. A primeira medição deu 80 em performance, e
+a causa era o harness: o servidor de teste não comprimia, e a "oportunidade"
+de 378 KB era gzip que a Vercel faz e ele não fazia. Corrigido o servidor, o
+número passou a medir a página.
 
-40 testes novos (309 no total). O de ZIP monta um arquivo e o descompacta com
-o próprio fflate: bytes intactos e subpastas preservadas. O fflate fica num
-chunk de 5 KB carregado só pelo worker — o bundle inicial segue sem uma linha
-de codec nem de compactação.
+Três landings de SEO com metadata própria, canônica, Open Graph, FAQ visível e
+o mesmo FAQ em JSON-LD, mais sitemap.xml, robots.txt, favicon e imagem de
+compartilhamento gerada na build — nenhuma function no deploy.
+
+Acessibilidade: link de pulo para a ferramenta, radiogroups com setas em vez
+de abas, range nativo para qualidade, aria-valuenow na barra de progresso, e
+um teste que opera a fila inteira só com o teclado.
 ```
 
 Ordem de leitura para quem chega: este arquivo → `PLANO.md` §3 (as decisões do motor)
 → `SPIKE.md` §5 (as mitigações medidas) → `src/engine/image/strategy.ts` →
-`src/engine/image/engine.ts` → `src/engine/core/pool.ts` → `src/store/queue.ts`.
+`src/engine/image/engine.ts` → `src/engine/core/pool.ts` → `src/store/queue.ts` →
+`tests/e2e/privacy.spec.ts`.
 
 O comentário no topo do `strategy.ts` explica por que ele não importa nada — essa
 separação é o que sustenta a testabilidade do projeto inteiro. O `engine.ts` liga os
-codecs sem quebrá-la: eles entram por injeção, e é por isso que 303 dos 309 testes rodam
-sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a fábrica de workers,
-e a `store/queue.ts` uma acima ainda, com as fábricas de orquestrador, de ZIP e de
-gravação — é o motivo de a concorrência, a fila e a saída inteiras serem testáveis sem
-abrir um navegador.
+codecs sem quebrá-la: eles entram por injeção, e é por isso que 303 dos 309 testes de
+unidade rodam sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a
+fábrica de workers, e a `store/queue.ts` uma acima ainda. O E2E fecha por fora: o que
+todas essas fronteiras permitiram testar isoladamente, ele prova junto, num navegador.
