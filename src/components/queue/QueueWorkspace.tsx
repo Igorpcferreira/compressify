@@ -15,6 +15,7 @@ import { Dropzone } from './Dropzone'
 import { OptionsPanel } from './OptionsPanel'
 import { QueueList } from './QueueList'
 import { RejectedNotice } from './RejectedNotice'
+import { useTitleProgress } from './useTitleProgress'
 
 export function QueueWorkspace() {
   const addFiles = useQueueStore((state) => state.addFiles)
@@ -34,6 +35,8 @@ export function QueueWorkspace() {
   useEffect(() => {
     hydratePreferences()
   }, [hydratePreferences])
+
+  useTitleProgress()
 
   return (
     <div className="flex flex-col gap-6">

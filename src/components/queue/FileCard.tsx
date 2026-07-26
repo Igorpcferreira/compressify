@@ -16,16 +16,18 @@
 import {
   CircleCheckBig,
   CircleX,
+  Columns2,
   Download,
   Image as ImageIcon,
   TriangleAlert,
   X,
 } from 'lucide-react'
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { formatBytes, formatDuration, formatPercent, formatSavedPercent } from '@/lib/format'
 import { selectItem, useQueueStore, type QueueItem } from '@/store/queue'
+import { CompareDialog } from './CompareDialog'
 
 const STATUS_LABEL: Record<QueueItem['status'], string> = {
   queued: 'Na fila',
@@ -103,6 +105,12 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
   const cancelItem = useQueueStore((state) => state.cancelItem)
   const removeItem = useQueueStore((state) => state.removeItem)
   const downloadItem = useQueueStore((state) => state.downloadItem)
+  /**
+   * A modal aberta é estado **do card**, não da store: ela é local, some com o
+   * card e não interessa a mais ninguém. Guardá-la na store faria um evento de
+   * progresso de outro arquivo passar por aqui.
+   */
+  const [comparing, setComparing] = useState(false)
 
   if (!item) return null
 
@@ -160,6 +168,18 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
         {finished && item.blob ? (
           <Button
             size="sm"
+            variant="ghost"
+            onClick={() => setComparing(true)}
+            aria-label={`Comparar ${item.name} antes e depois`}
+          >
+            <Columns2 size={15} aria-hidden />
+            Comparar
+          </Button>
+        ) : null}
+
+        {finished && item.blob ? (
+          <Button
+            size="sm"
             onClick={() => downloadItem(id)}
             aria-label={`Baixar ${item.outputName ?? item.name}`}
             title={item.outputName ?? undefined}
@@ -192,6 +212,13 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
           </Button>
         )}
       </div>
+
+      {/*
+        Montada só enquanto aberta: as duas object URLs da comparação nascem
+        com ela e morrem com ela. Cinquenta cards com a modal sempre montada
+        seriam cem URLs segurando o lote inteiro na memória.
+      */}
+      {comparing ? <CompareDialog item={item} onClose={() => setComparing(false)} /> : null}
     </li>
   )
 })

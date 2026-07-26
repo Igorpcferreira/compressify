@@ -57,6 +57,15 @@ export interface QueueItem {
   compressedBytes: number | null
   savedPercent: number | null
   outputName: string | null
+  /**
+   * O arquivo de entrada, guardado para a comparação antes/depois.
+   *
+   * Não custa memória: um `File` é uma referência ao que o navegador já tem em
+   * disco, não os bytes — e o orquestrador já segura a mesma referência
+   * enquanto o job existe. Quem lê os bytes é o `URL.createObjectURL` da
+   * comparação, sob demanda, e só do arquivo que a pessoa abriu.
+   */
+  file: File
   /** O resultado, guardado para o download do Incremento 6. */
   blob: Blob | null
   message: string | null
@@ -302,6 +311,7 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
               compressedBytes: null,
               savedPercent: null,
               outputName: null,
+              file: job.file,
               blob: null,
               message: null,
               width: null,
