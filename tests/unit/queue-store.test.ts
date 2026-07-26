@@ -4,7 +4,12 @@ import type { JobPool, PoolRunTask, PoolStats } from '@/engine/core/pool'
 import type { FileMetadata, JobResult } from '@/engine/core/types'
 import { acceptImage } from '@/engine/image/support'
 import { JobError } from '@/engine/workers/protocol'
-import { createQueueStore, DEFAULT_OPTIONS, type QueueStore } from '@/store/queue'
+import {
+  createQueueStore,
+  DEFAULT_OPTIONS,
+  type QueueStore,
+  type QueueStoreOptions,
+} from '@/store/queue'
 import { imageFile } from '../helpers/images'
 import { flush } from '../helpers/workers'
 
@@ -27,6 +32,9 @@ function jobResult(overrides: Partial<JobResult> = {}): JobResult {
 
 interface FakePoolHooks {
   run?(task: PoolRunTask): Promise<JobResult>
+  archive?: QueueStoreOptions['archive']
+  save?: QueueStoreOptions['save']
+  canSaveToFolder?: boolean
 }
 
 /**
@@ -36,8 +44,15 @@ interface FakePoolHooks {
  * fiação — evento do motor virando estado — e testá-la contra um orquestrador
  * falso provaria apenas que o falso funciona.
  */
-function storeWith(hooks: FakePoolHooks = {}): { store: QueueStore; runs: PoolRunTask[] } {
+interface FakeStore {
+  store: QueueStore
+  runs: PoolRunTask[]
+  downloads: Array<{ blob: Blob; name: string }>
+}
+
+function storeWith(hooks: FakePoolHooks = {}): FakeStore {
   const runs: PoolRunTask[] = []
+  const downloads: Array<{ blob: Blob; name: string }> = []
 
   const pool: JobPool = {
     size: 2,
@@ -60,9 +75,13 @@ function storeWith(hooks: FakePoolHooks = {}): { store: QueueStore; runs: PoolRu
 
   const store = createQueueStore({
     createOrchestrator: (events) => new QueueOrchestrator({ pool, accept: acceptImage, events }),
+    download: (blob, name) => downloads.push({ blob, name }),
+    canSaveToFolder: () => hooks.canSaveToFolder ?? false,
+    ...(hooks.archive ? { archive: hooks.archive } : {}),
+    ...(hooks.save ? { save: hooks.save } : {}),
   })
 
-  return { store, runs }
+  return { store, runs, downloads }
 }
 
 describe('store da fila — entrada', () => {
@@ -365,5 +384,207 @@ describe('store da fila — cancelar e limpar', () => {
     await store.getState().start()
 
     expect(Object.values(store.getState().items)[0]?.outputName).toBe('foto-compressify.webp')
+  })
+})
+
+describe('store da fila — saída', () => {
+  async function withOneResult(hooks: FakePoolHooks = {}) {
+    const fake = storeWith(hooks)
+    fake.store.getState().addFiles([imageFile({ name: 'a.jpg' })])
+    await fake.store.getState().start()
+    return fake
+  }
+
+  it('baixa um arquivo pelo nome de saída, não pelo de entrada', async () => {
+    const { store, downloads } = await withOneResult()
+
+    store.getState().downloadItem('job-1')
+
+    expect(downloads).toHaveLength(1)
+    expect(downloads[0]?.name).toBe('foto-compressify.webp')
+  })
+
+  it('não baixa um job que não produziu arquivo', () => {
+    const { store, downloads } = storeWith()
+    store.getState().addFiles([imageFile({ name: 'a.jpg' })])
+
+    store.getState().downloadItem('job-1')
+
+    expect(downloads).toEqual([])
+  })
+
+  it('um resultado só vira download direto, não ZIP', async () => {
+    let zipped = 0
+    const { store, downloads } = await withOneResult({
+      archive: () => {
+        zipped += 1
+        return Promise.resolve(new Blob(['PK']))
+      },
+    })
+
+    await store.getState().downloadAll()
+
+    // Obrigar a descompactar para pegar uma foto seria cerimônia sem ganho.
+    expect(zipped).toBe(0)
+    expect(downloads[0]?.name).toBe('foto-compressify.webp')
+  })
+
+  it('compacta o lote e baixa o ZIP com carimbo de data', async () => {
+    const entries: string[] = []
+    const fake = storeWith({
+      archive: (received) => {
+        entries.push(...received.map((entry) => entry.path))
+        return Promise.resolve(new Blob(['PK'], { type: 'application/zip' }))
+      },
+    })
+
+    fake.store.getState().addFiles([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
+    await fake.store.getState().start()
+    await fake.store.getState().downloadAll()
+
+    expect(entries).toEqual(['foto-compressify.webp', 'foto-compressify-1.webp'])
+    expect(fake.downloads[0]?.name).toMatch(/^compressify-\d{8}-\d{4}\.zip$/)
+    expect(fake.store.getState().output).toMatchObject({
+      phase: 'idle',
+      error: null,
+      notice: '2 arquivos compactados.',
+    })
+  })
+
+  it('mostra progresso enquanto compacta e volta a idle no fim', async () => {
+    let report: (percent: number) => void = () => {}
+    const fake = storeWith({
+      archive: (_entries, options) =>
+        new Promise((resolve) => {
+          report = (percent) => {
+            options.onProgress?.(percent)
+            resolve(new Blob(['PK']))
+          }
+        }),
+    })
+
+    fake.store.getState().addFiles([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
+    await fake.store.getState().start()
+
+    const zipping = fake.store.getState().downloadAll()
+    await flush()
+    expect(fake.store.getState().output.phase).toBe('zipping')
+
+    report(60)
+    await zipping
+    expect(fake.store.getState().output).toMatchObject({ phase: 'idle', percent: 0 })
+  })
+
+  it('cancelar a compactação não vira erro na tela', async () => {
+    const fake = storeWith({
+      archive: (_entries, options) =>
+        new Promise((_resolve, reject) => {
+          options.signal?.addEventListener('abort', () => {
+            const error = new Error('Compactação cancelada.')
+            error.name = 'AbortedError'
+            reject(error)
+          })
+        }),
+    })
+
+    fake.store.getState().addFiles([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
+    await fake.store.getState().start()
+
+    const zipping = fake.store.getState().downloadAll()
+    await flush()
+    fake.store.getState().cancelOutput()
+    await zipping
+
+    expect(fake.store.getState().output).toMatchObject({ phase: 'idle', error: null })
+    expect(fake.downloads).toEqual([])
+  })
+
+  it('falha na compactação vira mensagem, não silêncio', async () => {
+    const fake = storeWith({ archive: () => Promise.reject(new Error('sem memória')) })
+    fake.store.getState().addFiles([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
+    await fake.store.getState().start()
+
+    await fake.store.getState().downloadAll()
+
+    expect(fake.store.getState().output.error).toBe('sem memória')
+
+    fake.store.getState().dismissOutput()
+    expect(fake.store.getState().output.error).toBeNull()
+  })
+
+  it('salva em pasta e confirma quantos arquivos foram escritos', async () => {
+    const paths: string[] = []
+    const { store } = await withOneResult({
+      canSaveToFolder: true,
+      save: (entries) => {
+        paths.push(...entries.map((entry) => entry.path))
+        return Promise.resolve({ directoryName: 'Downloads', written: entries.length })
+      },
+    })
+
+    await store.getState().saveToFolder()
+
+    expect(paths).toEqual(['foto-compressify.webp'])
+    expect(store.getState().output.notice).toBe('1 arquivos salvos em Downloads.')
+  })
+
+  it('fechar o seletor de pasta não é erro', async () => {
+    const { store } = await withOneResult({
+      canSaveToFolder: true,
+      save: () => {
+        const error = new Error('Gravação cancelada.')
+        error.name = 'AbortedError'
+        return Promise.reject(error)
+      },
+    })
+
+    await store.getState().saveToFolder()
+
+    expect(store.getState().output).toMatchObject({ phase: 'idle', error: null, notice: null })
+  })
+
+  it('esconde "salvar em pasta" onde a API não existe', () => {
+    expect(storeWith().store.getState().canSaveToFolder).toBe(false)
+    expect(storeWith({ canSaveToFolder: true }).store.getState().canSaveToFolder).toBe(true)
+  })
+
+  it('não deixa duas saídas concorrerem', async () => {
+    let calls = 0
+    const fake = storeWith({
+      archive: () => {
+        calls += 1
+        return new Promise(() => {})
+      },
+    })
+    fake.store.getState().addFiles([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
+    await fake.store.getState().start()
+
+    void fake.store.getState().downloadAll()
+    await flush()
+    void fake.store.getState().downloadAll()
+    await flush()
+
+    expect(calls).toBe(1)
+  })
+
+  it('limpar a fila cancela a saída em curso', async () => {
+    let aborted = false
+    const fake = storeWith({
+      archive: (_entries, options) =>
+        new Promise(() => {
+          options.signal?.addEventListener('abort', () => {
+            aborted = true
+          })
+        }),
+    })
+    fake.store.getState().addFiles([imageFile({ name: 'a.jpg' }), imageFile({ name: 'b.jpg' })])
+    await fake.store.getState().start()
+
+    void fake.store.getState().downloadAll()
+    await flush()
+    fake.store.getState().clearQueue()
+
+    expect(aborted).toBe(true)
+    expect(fake.store.getState().output.phase).toBe('idle')
   })
 })

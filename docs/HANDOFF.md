@@ -3,13 +3,13 @@
 > Documento de continuidade. Quem retomar o Compressify (pessoa ou sessão nova de
 > IA) deve ler **este arquivo primeiro** e só então mergulhar no `PLANO.md`.
 >
-> Última atualização: 26/07/2026, ao fim do **Incremento 5**. O produto existe:
-> arrastar imagens, escolher preferências, comprimir em paralelo com progresso
-> por arquivo e cancelar no meio — tudo dentro do navegador. Falta a saída
-> (download e ZIP), que é o Incremento 6.
+> Última atualização: 26/07/2026, ao fim do **Incremento 6**. O ciclo fecha:
+> arrastar, comprimir em paralelo com progresso por arquivo, cancelar no meio e
+> **levar o resultado embora** — baixando um a um, em ZIP ou direto numa pasta.
+> Tudo dentro do navegador, sem uma requisição sequer.
 >
-> Os Incrementos 3 e 4 já estão comitados. **O Incremento 5 está na árvore, sem
-> commit**, e a mensagem sugerida está em §13.
+> Os Incrementos 3, 4 e 5 já estão comitados. **O Incremento 6 está na árvore,
+> sem commit**, e a mensagem sugerida está em §14.
 
 ---
 
@@ -25,7 +25,7 @@ Estas vieram do brief do Igor e não expiram:
    implementar. O Igor prefere discussão a execução cega — e já mudou de decisão duas
    vezes diante de dados (`image-q`, contrastes do design system).
 4. **Verificar versões antes de fixar dependências.** A data de conhecimento do modelo
-   pode estar defasada. Isso já pegou três armadilhas reais (§9).
+   pode estar defasada. Isso já pegou três armadilhas reais (§10).
 5. **Medir antes de afirmar.** O spike derrubou quatro suposições do plano, duas delas
    minhas. Números > intuição.
 
@@ -43,7 +43,8 @@ e6590df  feat(engine): porta o algoritmo como código puro e testável
 3ebdc32  docs: handoff com estado do projeto e próximos incrementos
 c79a7d8  feat(engine): motor de imagem real, com codecs verificados de ponta a ponta
 0bd318c  feat(engine): concorrência — worker, pool com orçamento de memória e fila
-         ⬅️ o Incremento 5 está na árvore, **sem commit**, aguardando validação
+a6aef39  feat(ui): a fila ganha tela — store, dropzone, cards e preferências
+         ⬅️ o Incremento 6 está na árvore, **sem commit**, aguardando validação
 ```
 
 | Incremento                                       | Estado                                |
@@ -58,7 +59,7 @@ c79a7d8  feat(engine): motor de imagem real, com codecs verificados de ponta a p
 | 7 — Acabamento: SEO, modo escuro, a11y, E2E      | pendente                              |
 | 8 — Documentação e ícones                        | pendente                              |
 
-`npm run check` (typecheck + lint + formatação + 269 testes) passa limpo em ~11 s.
+`npm run check` (typecheck + lint + formatação + 309 testes) passa limpo em ~12 s.
 `npm run build` gera exportação estática sem nenhuma serverless function — **agora com
 webpack, não Turbopack**. O porquê está na §4.
 
@@ -79,6 +80,9 @@ src/
   store/queue.ts                       ▲ a store Zustand ligada ao orquestrador
   lib/files.ts                         ▲ drop de pastas, varredura recursiva, colar
   lib/cn.ts                            ▲ junção de classes, 12 linhas
+  lib/download.ts                      ● download individual e nome do ZIP
+  lib/archive.ts                       ● conversa com o worker de ZIP
+  lib/fsAccess.ts                      ● salvar numa pasta, quando o navegador deixa
   engine/core/types.ts                 contratos (CompressionEngine, JobResult…)
   engine/core/registry.ts              resolve o motor por arquivo
   engine/core/naming.ts                ◆ unicidade de caminho, genérica
@@ -89,6 +93,9 @@ src/
   engine/workers/runner.ts             ◆ o que o worker faz — testável em Node
   engine/workers/image.worker.ts       ◆ a ligação com `self`, e nada mais
   engine/workers/spawn.ts              ◆ `new Worker(new URL(…))` + pool pronto
+  engine/workers/zip-protocol.ts       ● o contrato do worker de ZIP
+  engine/workers/zip-runner.ts         ● monta o ZIP em fluxo, sem recomprimir
+  engine/workers/zip.worker.ts         ● a ligação com `self`
   engine/image/strategy.ts             ★ o algoritmo portado — núcleo do projeto
   engine/image/quantize.ts             ★ quantizador próprio (median cut + LUT)
   engine/image/probe.ts                ★ lê cabeçalho (formato, dimensões, bits)
@@ -103,12 +110,12 @@ tests/
   helpers/images.ts                    construtores de cabeçalho, File e foto sintética
   helpers/codecs-node.ts               inicializa os codecs reais em Node
   helpers/workers.ts                   ◆ workers de mentira, dirigidos pelo teste
-  unit/                                263 testes — lógica, com codecs injetados
+  unit/                                303 testes — lógica, com codecs injetados
   integration/engine-codecs.test.ts    6 testes — o motor com os codecs de verdade
 docs/                                  PLANO, SPIKE, HANDOFF, brand/
 ```
 
-`★` é o Incremento 3, `◆` o Incremento 4, `▲` o Incremento 5.
+`★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6.
 
 Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/07/2026
 (as seis coincidiram com o que o plano previa):
@@ -118,11 +125,11 @@ Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/0
 @jsquash/avif 2.1.1 · @jsquash/resize 2.1.1 · @jsquash/oxipng 2.3.0
 ```
 
-Do Incremento 5, conferidas contra o `latest` do npm em 26/07/2026 — as duas bateram
-com o que o `PLANO.md` §6.2 previa:
+Dos Incrementos 5 e 6, conferidas contra o `latest` do npm em 26/07/2026 — as três
+bateram com o que o `PLANO.md` §6.2 previa:
 
 ```
-zustand 5.0.14 · lucide-react 1.27.0
+zustand 5.0.14 · lucide-react 1.27.0 · fflate 0.8.3
 ```
 
 ---
@@ -504,7 +511,98 @@ Não é só o tamanho de hoje: na Fase 2 a mesma linha arrastaria o motor de PDF
 
 ---
 
-## 9. Armadilhas já encontradas — não repetir
+## 9. O Incremento 6 — a saída
+
+Comprimir sem poder levar o resultado embora não é produto. Três caminhos, todos
+sem servidor:
+
+| Caminho            | Onde                           | O que preserva                      |
+| ------------------ | ------------------------------ | ----------------------------------- |
+| Baixar um arquivo  | botão no `FileCard`            | o nome de saída, sem a subpasta     |
+| Baixar tudo (.zip) | `ActionBar` → worker de ZIP    | a árvore inteira, dentro do arquivo |
+| Salvar em pasta    | `ActionBar`, onde a API existe | a árvore inteira, no disco          |
+
+### O ZIP não comprime — e isso é a decisão, não um esquecimento
+
+Tudo que entra no ZIP já saiu de um encoder: JPEG, WebP, AVIF e PNG são fluxos
+comprimidos. Passar deflate por cima gasta CPU proporcional ao lote para ganhar perto de
+zero por cento — e num lote de 50 fotos isso é o usuário esperando de novo depois de já
+ter esperado a compressão. O `ZipPassThrough` do fflate usa o método **stored**, que é
+do formato ZIP, não um atalho nosso: qualquer descompactador abre.
+
+Há um teste que **prova** a escolha em vez de descrevê-la: 4096 bytes de zeros viram um
+ZIP **maior** que a entrada. Com deflate ficaria em dezenas de bytes.
+
+### Fluxo, não mapa
+
+A API simples do fflate (`zip(objeto, cb)`) exige todos os bytes de entrada na memória
+**e** produz a saída inteira de uma vez — 2× o tamanho do lote, na thread que também
+segura os resultados. Com `Zip` + `ZipPassThrough`, cada arquivo é lido, empurrado e
+descartado, e os pedaços da saída viram um `Blob`, que o navegador respalda em disco
+(§11, decisão 6).
+
+E os bytes **não passam pela thread principal**: quem chama `arrayBuffer()` é o worker.
+A thread principal manda `Blob` — referência, não conteúdo — e recebe um `Blob` de volta.
+
+### Detalhes que só aparecem quando se erra
+
+1. **Revogar a object URL na hora quebra o download** em parte dos navegadores: o clique
+   programático ainda não terminou de resolver o recurso. Nunca revogar segura o `Blob`
+   inteiro na memória — 50 resultados de 3 MB são 150 MB até recarregar a página. A saída
+   é revogar a **anterior** ao criar a próxima, e agendar a revogação da última. Cada URL
+   é revogada exatamente uma vez, e há teste para as duas metades da regra.
+2. **O atributo `download` ignora diretórios.** `pasta/foto.webp` vira `foto.webp` no
+   disco de qualquer forma, então passamos só o nome — prometer estrutura que o navegador
+   não entrega seria mentira na interface. Quem quer a árvore usa o ZIP ou "Salvar em
+   pasta".
+3. **Um resultado só não vira ZIP.** Obrigar a descompactar para pegar uma foto é
+   cerimônia sem ganho; o botão baixa o arquivo direto e muda de rótulo.
+4. **`showDirectoryPicker` exige o gesto do usuário.** Um `await` antes dele e o navegador
+   recusa por falta de ativação — por isso a ação da store chama o seletor antes de
+   qualquer espera.
+5. **Segmentos `..` são descartados** ao recriar a árvore. Eles não aparecem em
+   `webkitRelativePath`, mas confiar nisso é como se escreve fora da pasta que o usuário
+   autorizou.
+6. **O worker de ZIP é sempre terminado** — no sucesso, no erro e no cancelamento. Um
+   worker órfão segurando um lote de 500 MB é vazamento que ninguém vê até a aba morrer.
+
+### Degradação sem alarde
+
+Onde a File System Access API não existe — Firefox e Safari — o botão "Salvar em pasta"
+**não aparece**. Nada de item desabilitado com "seu navegador não suporta". É a regra do
+`PLANO.md` §4.2, e o download comum continua ali fazendo o trabalho.
+
+### O que os 40 testes novos cobrem
+
+- **`zip.test.ts`** (7) — monta um ZIP e o **descompacta com o próprio fflate**: bytes
+  intactos, subpastas preservadas, método stored comprovado, progresso, cancelamento e
+  falha reportada.
+- **`archive.test.ts`** (8) — o plumbing com um worker de mentira: progresso, abort,
+  falha, morte do worker, mensagem de outro lote, e o worker terminado em todos os
+  caminhos.
+- **`fs-access.test.ts`** (7) — recriação da árvore com handles falsos, `..` descartado,
+  progresso e cancelamento no meio.
+- **`download.test.ts`** (6, jsdom) — a regra das object URLs e o carimbo do nome do ZIP.
+- **`queue-store.test.ts`** (+12) — as ações de saída: um resultado baixa direto, dois
+  viram ZIP, cancelar não vira erro, falha vira mensagem, duas saídas não concorrem e
+  limpar a fila cancela a que estiver em curso.
+
+### Limite conhecido
+
+O fflate não emite ZIP64, então um lote cujo **total** passe de 4 GB não geraria um
+arquivo válido. Com imagens comprimidas isso exigiria centenas de fotos de dezenas de
+megabytes cada; se a Fase 3 (vídeo) chegar, o limite precisa ser tratado — provavelmente
+dividindo em vários ZIPs.
+
+### Bundle depois do incremento
+
+O `fflate` **não** está no bundle inicial: ele vive num chunk de 5 KB carregado só pelo
+worker de ZIP (`compressify-zip`, 2,5 KB). Os 7 scripts iniciais somam 568,6 KB sem
+gzip, e nenhum contém código de codec nem de compactação.
+
+---
+
+## 10. Armadilhas já encontradas — não repetir
 
 | Armadilha                     | O que aconteceu                                                                                                                                                                                                                                    |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -526,7 +624,7 @@ Não é só o tamanho de hoje: na Fase 2 a mesma linha arrastaria o motor de PDF
 
 ---
 
-## 10. Decisões de produto que já foram fechadas com o Igor
+## 11. Decisões de produto que já foram fechadas com o Igor
 
 Não reabrir sem motivo novo:
 
@@ -548,22 +646,23 @@ Não reabrir sem motivo novo:
 
 ---
 
-## 11. Riscos ainda abertos
+## 12. Riscos ainda abertos
 
-| Risco                                                                                    | Situação                                                                     |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Turbopack não empacota os codecs multi-thread                                            | 🟢 **Contornado** com `--webpack` — revisitar no futuro                      |
-| Quantizador próprio não atingir o custo estimado                                         | 🟢 **Fechado** — 92 ms a 12MP, melhor que a estimativa                       |
-| Turbopack com o worker (`next dev`)                                                      | 🟡 **Novo** — o build de produção foi verificado; o `dev` só no Incremento 5 |
-| Decode nativo e contexto de worker sem verificação real                                  | 🟡 Incrementos 5 e 7 — a fila existe, mas nada rodou em navegador ainda      |
-| Safari/WebKit nunca medido                                                               | 🟡 Incremento 7                                                              |
-| Orçamento de 96 MP em voo continua estimativa, não medição                               | 🟡 Incremento 5 — a aritmética está testada; falta memória real de navegador |
-| Firefox lento pode exigir ajuste do teto de 20 s por job                                 | 🟡 Incremento 5                                                              |
-| Deploy carrega `.wasm` que nunca usamos (`avif_enc_mt` de 3,4 MB, `hqx`, `magic-kernel`) | 🟡 Incremento 7 — não afetam o carregamento inicial, só o tamanho do deploy  |
+| Risco                                                                                    | Situação                                                                                     |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Nada foi comprimido dentro de um navegador de verdade**                                | 🔴 **O maior risco aberto** — E2E no Incremento 7; até lá, `npm run dev` e arrastar uma foto |
+| Turbopack não empacota os codecs multi-thread                                            | 🟢 **Contornado** com `--webpack` — revisitar no futuro                                      |
+| Quantizador próprio não atingir o custo estimado                                         | 🟢 **Fechado** — 92 ms a 12MP, melhor que a estimativa                                       |
+| Turbopack com os workers (`next dev`)                                                    | 🟢 **Fechado** — compila e serve a home com o pool no grafo (§8)                             |
+| Safari/WebKit nunca medido                                                               | 🟡 Incremento 7                                                                              |
+| Orçamento de 96 MP em voo continua estimativa, não medição                               | 🟡 Incremento 7 — a aritmética está testada; falta memória real de navegador                 |
+| Firefox lento pode exigir ajuste do teto de 20 s por job                                 | 🟡 Incremento 7                                                                              |
+| Deploy carrega `.wasm` que nunca usamos (`avif_enc_mt` de 3,4 MB, `hqx`, `magic-kernel`) | 🟡 Incremento 7 — não afetam o carregamento inicial, só o tamanho do deploy                  |
+| ZIP acima de 4 GB no total (fflate sem ZIP64)                                            | 🟡 Irrelevante para imagens; revisitar na Fase 3 (§9)                                        |
 
 ---
 
-## 12. Critérios de aceite da Fase 1 — rastreamento
+## 13. Critérios de aceite da Fase 1 — rastreamento
 
 Do brief original, com o estado de cada um:
 
@@ -576,83 +675,82 @@ Do brief original, com o estado de cada um:
       re-render da store está sob teste; medir de fato no 7
 - [x] Cancelar a fila no meio — botão na `ActionBar`, `cancelAll` com terminação de
       worker preso, e cancelamento por arquivo no card
-- [ ] Baixar tudo em ZIP — Incremento 6
+- [x] Baixar tudo em ZIP — worker dedicado, método stored, árvore preservada; o teste
+      monta e descompacta um ZIP de verdade
 - [ ] Chrome, Firefox e Safari com degradação documentada — Incremento 7
 - [ ] Lighthouse > 90 em Performance e Acessibilidade — Incremento 7; o bundle inicial
-      está em 6 scripts sem uma linha de codec, e o motor saiu dele no §8
-- [x] `npm run check` passa limpo — 269 testes
+      está em 7 scripts (568,6 KB sem gzip) sem uma linha de codec nem de fflate
+- [x] `npm run check` passa limpo — 309 testes
 - [ ] Modo claro e escuro completos — tokens aplicados em toda a UI e alternador na barra
       superior; falta a revisão de contraste tela a tela, no 7
 
 ---
 
-## 13. Como retomar
+## 14. Como retomar
 
 ```bash
 cd Compressify
 npm install          # o .npmrc já força o registry público
-npm run check        # deve passar limpo — 269 testes, ~11 s
-npm run dev          # http://localhost:3000 — arraste uma foto e veja funcionar
+npm run check        # deve passar limpo — 309 testes, ~12 s
+npm run dev          # http://localhost:3000 — arraste fotos e baixe o resultado
 npm run build        # exportação estática, via webpack (§4)
 ```
 
-**Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §9.
+**Feche dev servers abertos deste projeto antes de rodar `npm run build`** — ver §10.
 
-### O Incremento 6, em uma frase cada
+### Antes de qualquer coisa
 
-- `src/lib/download.ts` — download individual: `URL.createObjectURL` + `<a download>`,
-  com `revoke` no clique seguinte. O `blob` de cada job já está guardado no item da
-  store, esperando por isto.
-- `src/engine/workers/zip.worker.ts` — "Baixar tudo (.zip)" com `fflate` **dentro de um
-  worker**, com o `zip()` assíncrono. Montar 50 arquivos na thread principal trava a
-  aba, que é o critério de aceite #4. Conferir a versão do `fflate` contra o `latest`
-  antes de fixar (o `PLANO.md` §6.2 previa 0.8.3, e hoje é 0.8.3).
-- Caminhos relativos preservados dentro do ZIP: `item.outputName` já vem com a subpasta,
-  e a unicidade global já foi resolvida no §7.
-- `src/lib/fsAccess.ts` — se `window.showDirectoryPicker` existir, salvar direto numa
-  pasta recriando a árvore. Se não existir, cair no download comum **sem alarde e sem
-  mencionar o recurso** (`PLANO.md` §4.2).
-- O botão "Baixar" volta ao `FileCard` (o board o desenha) e "Baixar tudo (.zip)" entra
-  na `ActionBar`.
+Abra o `npm run dev`, arraste três ou quatro fotos, clique em **Comprimir tudo** e depois
+em **Baixar tudo (.zip)**. O ciclo inteiro existe em código e está sob 309 testes, mas
+**nenhum deles roda num navegador** — é o único risco 🔴 da tabela do §12, e ele só sai
+de lá com o Playwright do Incremento 7 ou com você olhando.
 
-Antes de começar, vale gastar cinco minutos abrindo o `npm run dev` e arrastando uma
-foto de verdade: é o único risco 🔴 da tabela do §11, e o Incremento 6 constrói em cima
-de um caminho que ninguém executou ainda num navegador.
+### O Incremento 7, em uma frase cada
+
+- **`privacy.spec.ts`** — o critério de aceite #3 vira teste: intercepta toda requisição
+  e falha se qualquer corpo contiver bytes do arquivo de teste. O diferencial do produto
+  passa a rodar em cada PR em vez de ser promessa.
+- **`queue.spec.ts`** — arrastar N imagens, ver progresso individual, cancelar no meio,
+  baixar o ZIP. Em Chrome, Firefox e WebKit. É onde o decode nativo
+  (`createImageBitmap`), o contexto de worker e o Safari finalmente saem do 🟡.
+- **Comparação com o app Electron** — as fixtures do desktop sobre as mesmas imagens,
+  para o critério #2 (±10%, AVIF excluído) deixar de ser subjetivo.
+- **Landings de SEO** — `/comprimir-imagem`, `/converter-webp`, `/converter-avif`, com o
+  `metadata` por rota que o `layout.tsx` já prepara com `template`.
+- **Revisão de contraste tela a tela** nos dois temas, e Lighthouse ≥ 90.
+- **Enxugar o deploy**: `avif_enc_mt` (3,4 MB), `hqx` e `magic-kernel` são emitidos e
+  nunca usados — não pesam no carregamento, mas pesam no bundle publicado.
 
 ### A mensagem de commit sugerida
 
-O Incremento 5 está na árvore, sem commit (`src/store/`, `src/components/`, `src/lib/`,
-`src/engine/image/support.ts`, `app/page.tsx`, `tests/unit/{queue-store,files,dropzone}`,
-mais os ajustes de `orchestrator.ts` e `registry.ts`):
+O Incremento 6 está na árvore, sem commit (`src/engine/workers/zip*`, `src/lib/{archive,
+download,fsAccess}.ts`, as ações de saída da store, `ActionBar`, `FileCard`, e os testes
+`zip`, `archive`, `fs-access`, `download`):
 
 ```
-feat(ui): a fila ganha tela — store, dropzone, cards e preferências
+feat(saida): download individual, ZIP em worker e salvar em pasta
 
-A store Zustand ligada aos eventos do orquestrador, o dropzone com arrastar,
-colar e escolher pasta, o card de arquivo com progresso individual e as
-preferências com os mesmos padrões do app Electron (auto, 5 MB, inteligente,
-qualidade 82).
+Fecha o ciclo do produto: o resultado agora sai do navegador por três
+caminhos, nenhum deles passando por servidor. Download individual pelo card,
+"Baixar tudo (.zip)" com worker dedicado, e "Salvar em pasta" onde a File
+System Access API existe — onde não existe, o botão simplesmente não aparece.
 
-A escolha do Zustand vira teste em vez de opinião: um evento de progresso troca
-a referência de um item e de mais nenhum, e as estatísticas do lote são estado,
-não seletor derivado. Dois testes prendem exatamente isso — é o que sustenta 50
-cards sem repintar a lista a cada 1%.
+O ZIP usa o método stored, não deflate: tudo que entra já saiu de um encoder,
+então recomprimir gastaria CPU proporcional ao lote para ganhar perto de zero.
+Um teste prova a escolha em vez de descrevê-la — 4096 bytes de zeros viram um
+ZIP maior que a entrada. A montagem é em fluxo (Zip + ZipPassThrough), o que
+evita segurar 2x o lote na memória, e os bytes são lidos dentro do worker: a
+thread principal só troca referências de Blob.
 
-O build revelou um vazamento de camada e ele foi corrigido: o orquestrador
-chamava createDefaultRegistry() só para saber se um arquivo é aceito, e isso
-punha 13 KB de motor no bundle inicial da thread principal. A política de
-aceitação passa a entrar por injeção, com a implementação de imagem em
-engine/image/support.ts, que é puro. O bundle inicial caiu de 7 scripts e
-574,8 KB para 6 e 561,7 KB, e o motor voltou para o chunk do worker.
+Duas armadilhas viraram regra testada: revogar a object URL logo após o clique
+cancela o download em parte dos navegadores (revoga-se a anterior, nunca a
+atual), e showDirectoryPicker exige o gesto do usuário, então a store chama o
+seletor antes de qualquer await.
 
-Arrastar pasta preserva a estrutura de subpastas: o File que vem de
-FileSystemFileEntry chega com webkitRelativePath vazio, então lib/files.ts
-define o caminho na mão, com teto de profundidade contra link circular.
-
-34 testes novos (269 no total): 18 da store com o orquestrador real, 10 da
-varredura de pastas e 6 do dropzone em jsdom. O next dev com Turbopack passou a
-compilar e servir a home com o worker no grafo, fechando o risco que o
-Incremento 4 tinha deixado aberto.
+40 testes novos (309 no total). O de ZIP monta um arquivo e o descompacta com
+o próprio fflate: bytes intactos e subpastas preservadas. O fflate fica num
+chunk de 5 KB carregado só pelo worker — o bundle inicial segue sem uma linha
+de codec nem de compactação.
 ```
 
 Ordem de leitura para quem chega: este arquivo → `PLANO.md` §3 (as decisões do motor)
@@ -661,7 +759,8 @@ Ordem de leitura para quem chega: este arquivo → `PLANO.md` §3 (as decisões 
 
 O comentário no topo do `strategy.ts` explica por que ele não importa nada — essa
 separação é o que sustenta a testabilidade do projeto inteiro. O `engine.ts` liga os
-codecs sem quebrá-la: eles entram por injeção, e é por isso que 263 dos 269 testes rodam
+codecs sem quebrá-la: eles entram por injeção, e é por isso que 303 dos 309 testes rodam
 sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a fábrica de workers,
-e a `store/queue.ts` uma acima ainda, com a fábrica de orquestrador — é o motivo de a
-concorrência e a fila inteiras serem testáveis sem abrir um navegador.
+e a `store/queue.ts` uma acima ainda, com as fábricas de orquestrador, de ZIP e de
+gravação — é o motivo de a concorrência, a fila e a saída inteiras serem testáveis sem
+abrir um navegador.

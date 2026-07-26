@@ -13,7 +13,14 @@
 
 'use client'
 
-import { CircleCheckBig, CircleX, Image as ImageIcon, TriangleAlert, X } from 'lucide-react'
+import {
+  CircleCheckBig,
+  CircleX,
+  Download,
+  Image as ImageIcon,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import { memo } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
@@ -95,6 +102,7 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
   const item = useQueueStore(selectItem(id))
   const cancelItem = useQueueStore((state) => state.cancelItem)
   const removeItem = useQueueStore((state) => state.removeItem)
+  const downloadItem = useQueueStore((state) => state.downloadItem)
 
   if (!item) return null
 
@@ -148,6 +156,18 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
         ) : (
           <span className="text-text-muted">—</span>
         )}
+
+        {finished && item.blob ? (
+          <Button
+            size="sm"
+            onClick={() => downloadItem(id)}
+            aria-label={`Baixar ${item.outputName ?? item.name}`}
+            title={item.outputName ?? undefined}
+          >
+            <Download size={15} aria-hidden />
+            Baixar
+          </Button>
+        ) : null}
 
         {running ? (
           <Button

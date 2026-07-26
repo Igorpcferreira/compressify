@@ -30,6 +30,16 @@ import type { JobOptions, JobStatus } from '@/engine/core/types'
 import { acceptImage } from '@/engine/image/support'
 import { createImagePool } from '@/engine/workers/spawn'
 import { fileNameOf } from '@/engine/image/naming'
+import type { ZipEntry } from '@/engine/workers/zip-protocol'
+import { createZipArchive, type ArchiveOptions } from '@/lib/archive'
+import { archiveName, downloadBlob } from '@/lib/download'
+import {
+  saveToDirectory,
+  supportsDirectoryPicker,
+  type SaveEntry,
+  type SaveOptions,
+  type SaveResult,
+} from '@/lib/fsAccess'
 import { savedPercentOf } from '@/lib/format'
 
 export interface QueueItem {
@@ -69,6 +79,17 @@ export interface QueueStats {
 
 export type QueuePhase = 'idle' | 'running'
 
+/** A saída tem fase própria: compactar 50 arquivos não é comprimir. */
+export type OutputPhase = 'idle' | 'zipping' | 'saving'
+
+export interface OutputState {
+  phase: OutputPhase
+  percent: number
+  error: string | null
+  /** Confirmação de sucesso, para o `aria-live` da barra de ação. */
+  notice: string | null
+}
+
 export interface QueueState {
   items: Record<string, QueueItem>
   order: string[]
@@ -77,6 +98,9 @@ export interface QueueState {
   phase: QueuePhase
   stats: QueueStats
   lastSummary: RunSummary | null
+  output: OutputState
+  /** `showDirectoryPicker` existe neste navegador. Falso no Firefox e no Safari. */
+  canSaveToFolder: boolean
 
   addFiles(files: readonly File[]): void
   removeItem(id: string): void
@@ -86,6 +110,11 @@ export interface QueueState {
   start(): Promise<void>
   cancelItem(id: string): void
   cancelAll(): void
+  downloadItem(id: string): void
+  downloadAll(): Promise<void>
+  saveToFolder(): Promise<void>
+  cancelOutput(): void
+  dismissOutput(): void
 }
 
 /** Os mesmos padrões do app Electron — fidelidade é requisito, não detalhe. */
@@ -112,6 +141,35 @@ const EMPTY_STATS: QueueStats = {
 }
 
 const FINAL_STATUSES = new Set<JobStatus>(['success', 'warning', 'error', 'cancelled'])
+
+const IDLE_OUTPUT: OutputState = { phase: 'idle', percent: 0, error: null, notice: null }
+
+/**
+ * Os resultados prontos, na ordem da fila.
+ *
+ * Aviso conta: o arquivo existe, é menor que o original e é baixável — a
+ * mensagem diz que a meta não foi alcançada, não que falhou.
+ */
+function readyEntries(state: QueueState): Array<{ path: string; blob: Blob }> {
+  const entries: Array<{ path: string; blob: Blob }> = []
+
+  for (const id of state.order) {
+    const item = state.items[id]
+    if (!item?.blob || !item.outputName) continue
+    if (item.status !== 'success' && item.status !== 'warning') continue
+    entries.push({ path: item.outputName, blob: item.blob })
+  }
+
+  return entries
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : 'Não foi possível concluir.'
+}
+
+function isCancellation(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortedError'
+}
 
 function tally(items: Record<string, QueueItem>, order: readonly string[]): QueueStats {
   const stats: QueueStats = { ...EMPTY_STATS, total: order.length }
@@ -148,8 +206,12 @@ function now(): number {
 }
 
 export interface QueueStoreOptions {
-  /** Ponto de injeção dos testes: evita criar workers de verdade. */
+  /** Pontos de injeção dos testes: evitam workers, disco e navegador. */
   createOrchestrator?(events: OrchestratorEvents): QueueOrchestrator
+  archive?(entries: readonly ZipEntry[], options: ArchiveOptions): Promise<Blob>
+  save?(entries: readonly SaveEntry[], options: SaveOptions): Promise<SaveResult>
+  download?(blob: Blob, name: string): void
+  canSaveToFolder?(): boolean
 }
 
 export type QueueStore = UseBoundStore<StoreApi<QueueState>>
@@ -160,10 +222,17 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
     ((events: OrchestratorEvents) =>
       new QueueOrchestrator({ pool: createImagePool(), accept: acceptImage, events }))
 
+  const archive = options.archive ?? createZipArchive
+  const save = options.save ?? saveToDirectory
+  const download = options.download ?? downloadBlob
+  const canSave = options.canSaveToFolder ?? supportsDirectoryPicker
+
   return create<QueueState>((set, get) => {
     let orchestrator: QueueOrchestrator | null = null
     /** Início de cada job, fora do estado: cronômetro não deve repintar nada. */
     const startedAt = new Map<string, number>()
+    /** Cancelamento da saída (ZIP ou gravação), separado do da compressão. */
+    let outputController: AbortController | null = null
 
     /** Troca um item preservando a referência de todos os outros. */
     function patchItem(id: string, patch: Partial<QueueItem>, retally = false): void {
@@ -276,6 +345,10 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
       phase: 'idle',
       stats: EMPTY_STATS,
       lastSummary: null,
+      output: IDLE_OUTPUT,
+      // Lido uma vez, na criação da store: a capacidade do navegador não muda
+      // durante a sessão, e consultá-la em render seria estado escondido.
+      canSaveToFolder: canSave(),
 
       addFiles(files) {
         if (files.length === 0) return
@@ -298,8 +371,16 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
 
       clearQueue() {
         orchestrator?.clear()
+        outputController?.abort()
         startedAt.clear()
-        set({ items: {}, order: [], stats: EMPTY_STATS, lastSummary: null, rejected: [] })
+        set({
+          items: {},
+          order: [],
+          stats: EMPTY_STATS,
+          lastSummary: null,
+          rejected: [],
+          output: IDLE_OUTPUT,
+        })
       },
 
       dismissRejected() {
@@ -339,6 +420,99 @@ export function createQueueStore(options: QueueStoreOptions = {}): QueueStore {
       cancelAll() {
         orchestrator?.cancelAll()
       },
+
+      downloadItem(id) {
+        const item = get().items[id]
+        if (!item?.blob || !item.outputName) return
+        download(item.blob, item.outputName)
+      },
+
+      async downloadAll() {
+        const entries = readyEntries(get())
+        if (entries.length === 0 || get().output.phase !== 'idle') return
+
+        // Um arquivo só não vira ZIP: obrigar o usuário a descompactar para
+        // pegar uma foto seria cerimônia sem ganho.
+        if (entries.length === 1 && entries[0]) {
+          download(entries[0].blob, entries[0].path)
+          return
+        }
+
+        const controller = new AbortController()
+        outputController = controller
+        set({ output: { phase: 'zipping', percent: 0, error: null, notice: null } })
+
+        try {
+          const blob = await archive(entries, {
+            signal: controller.signal,
+            onProgress: (percent) => {
+              set((state) => ({ output: { ...state.output, percent } }))
+            },
+          })
+
+          download(blob, archiveName(new Date()))
+          set({
+            output: {
+              ...IDLE_OUTPUT,
+              notice: `${entries.length} arquivos compactados.`,
+            },
+          })
+        } catch (error) {
+          set({
+            output: {
+              ...IDLE_OUTPUT,
+              error: isCancellation(error) ? null : messageOf(error),
+            },
+          })
+        } finally {
+          if (outputController === controller) outputController = null
+        }
+      },
+
+      async saveToFolder() {
+        const entries = readyEntries(get())
+        if (entries.length === 0 || get().output.phase !== 'idle') return
+
+        const controller = new AbortController()
+        outputController = controller
+        set({ output: { phase: 'saving', percent: 0, error: null, notice: null } })
+
+        try {
+          // `save` abre o seletor de pasta, e o seletor exige o gesto do usuário:
+          // nada de `await` antes desta linha, ou o navegador recusa por falta de
+          // ativação.
+          const result = await save(entries, {
+            signal: controller.signal,
+            onProgress: (percent) => {
+              set((state) => ({ output: { ...state.output, percent } }))
+            },
+          })
+
+          set({
+            output: {
+              ...IDLE_OUTPUT,
+              notice: `${result.written} arquivos salvos em ${result.directoryName}.`,
+            },
+          })
+        } catch (error) {
+          set({
+            output: {
+              ...IDLE_OUTPUT,
+              error: isCancellation(error) ? null : messageOf(error),
+            },
+          })
+        } finally {
+          if (outputController === controller) outputController = null
+        }
+      },
+
+      cancelOutput() {
+        outputController?.abort()
+      },
+
+      dismissOutput() {
+        set({ output: IDLE_OUTPUT })
+      },
     }
   })
 }
@@ -355,6 +529,8 @@ export const selectStats = (state: QueueState): QueueStats => state.stats
 export const selectPhase = (state: QueueState): QueuePhase => state.phase
 export const selectOptions = (state: QueueState): JobOptions => state.options
 export const selectRejected = (state: QueueState): RejectedItem[] => state.rejected
+export const selectOutput = (state: QueueState): OutputState => state.output
+export const selectCanSaveToFolder = (state: QueueState): boolean => state.canSaveToFolder
 
 export function selectItem(id: string): (state: QueueState) => QueueItem | undefined {
   return (state) => state.items[id]
