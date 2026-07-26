@@ -40,6 +40,13 @@ export const MESSAGES = {
   automaticFloor: 'Não foi possível reduzir mais sem uma compressão agressiva.',
   targetFloor: 'A imagem foi comprimida no limite possível para as opções selecionadas.',
   timeout: 'Interrompido pelo limite de tempo. Este é o menor tamanho alcançado.',
+  /**
+   * Converter sem perda para um formato mais fiel produz arquivo maior, e isso
+   * é correto: um JPEG de 0,76 MB vira um PNG de 2,23 MB porque o PNG guarda os
+   * pixels que o JPEG jogou fora. Sem esta frase, lê como defeito.
+   */
+  convertLarger:
+    'O formato escolhido guarda mais informação que o original, então o arquivo ficou maior.',
 } as const
 
 export interface RenderAttempt {
@@ -266,6 +273,46 @@ export async function renderTargeted(
     ...smallest,
     encodes,
     warning: expired ? MESSAGES.timeout : MESSAGES.targetFloor,
+  }
+}
+
+export interface ConvertOptions {
+  /**
+   * Qualidade do encode. Onde o formato de destino tem modo sem perda, ela não
+   * é usada — quem decide isso é o `codecs.ts`, que conhece cada encoder. Ela
+   * existe para o JPEG, que **não tem** modo sem perda: lá "sem comprimir" só
+   * pode significar `QUALITY_MAX`.
+   */
+  quality: number
+  originalBytes: number
+}
+
+/**
+ * Modo converter: um decode, um encode, e acabou.
+ *
+ * Sem escada de qualidade, sem busca binária e sem downscale — é o que
+ * distingue "trocar o formato" de "comprimir". A única decisão que sobra é
+ * avisar quando o resultado ficar maior que a origem, que é o caso comum de
+ * converter um JPEG para PNG sem perda.
+ *
+ * Como as outras duas estratégias, esta função não sabe o que há do outro lado
+ * do `render`: quem sabe que WebP tem `lossless` e JPEG não é o `codecs.ts`.
+ */
+export async function renderConvert(
+  render: Renderer,
+  options: ConvertOptions,
+  ctx?: StrategyContext,
+): Promise<RenderOutcome> {
+  checkAborted(ctx)
+
+  const attempt: RenderAttempt = { quality: clampQuality(options.quality), scale: 1 }
+  const bytes = await render(attempt)
+
+  return {
+    bytes,
+    attempt,
+    encodes: 1,
+    ...(bytes.byteLength > options.originalBytes ? { warning: MESSAGES.convertLarger } : {}),
   }
 }
 

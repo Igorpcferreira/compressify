@@ -19,7 +19,7 @@
 
 'use client'
 
-import { Settings2 } from 'lucide-react'
+import { Info, Settings2 } from 'lucide-react'
 import { ChipGroup } from '@/components/ui/Chip'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { Slider } from '@/components/ui/Slider'
@@ -37,6 +37,11 @@ import {
 const MODES = [
   { value: 'auto' as CompressionMode, label: 'Auto', description: 'Modo automático' },
   { value: 'target' as CompressionMode, label: 'Meta', description: 'Meta de tamanho' },
+  {
+    value: 'convert' as CompressionMode,
+    label: 'Converter',
+    description: 'Converter sem comprimir',
+  },
 ]
 
 const PRESETS = [
@@ -179,16 +184,37 @@ export function OptionsPanel() {
         />
       </div>
 
-      <Slider
-        label="Qualidade base"
-        value={options.quality}
-        min={QUALITY_RANGE.min}
-        max={QUALITY_RANGE.max}
-        disabled={disabled}
-        minLabel="menor arquivo"
-        maxLabel="sem perda"
-        onChange={(quality) => setOptions({ quality })}
-      />
+      {/*
+        No modo converter a qualidade não existe: onde o formato tem modo sem
+        perda ela seria ignorada, e no JPEG ela é fixa no teto. Deixar o slider
+        na tela seria um controle inerte — a mesma razão que esconde a meta de
+        tamanho fora do modo meta. No lugar dele vai a explicação, porque
+        "sem comprimir" significa coisas diferentes em cada destino e chamar a
+        saída JPEG de "sem perda" seria mentira.
+      */}
+      {options.mode === 'convert' ? (
+        <p className="text-small text-text-muted flex items-start gap-2.5">
+          <Info size={16} className="mt-0.5 flex-none" aria-hidden />
+          <span>
+            <strong className="text-text font-medium">PNG, WebP e AVIF</strong> saem sem perda
+            nenhuma — os pixels do original são preservados byte a byte.{' '}
+            <strong className="text-text font-medium">JPEG</strong> não tem modo sem perda: sai na
+            qualidade máxima. Converter para um formato mais fiel costuma produzir um arquivo{' '}
+            <em>maior</em>, e isso está certo.
+          </span>
+        </p>
+      ) : (
+        <Slider
+          label="Qualidade base"
+          value={options.quality}
+          min={QUALITY_RANGE.min}
+          max={QUALITY_RANGE.max}
+          disabled={disabled}
+          minLabel="menor arquivo"
+          maxLabel="sem perda"
+          onChange={(quality) => setOptions({ quality })}
+        />
+      )}
     </section>
   )
 }

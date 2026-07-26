@@ -27,6 +27,8 @@ interface EncodeCall {
   quality: number
   width: number
   height: number
+  /** O pedido de saída sem perda — o que distingue o modo converter. */
+  lossless: boolean
 }
 
 interface FakeCodecOptions {
@@ -57,8 +59,14 @@ function fakeCodecs(options: FakeCodecOptions = {}) {
       return Promise.resolve({ image: original, source: 'native' as const })
     },
 
-    encode(image, format, quality) {
-      const call: EncodeCall = { format, quality, width: image.width, height: image.height }
+    encode(image, format, quality, encodeOptions) {
+      const call: EncodeCall = {
+        format,
+        quality,
+        width: image.width,
+        height: image.height,
+        lossless: encodeOptions?.lossless ?? false,
+      }
       options.onEncode?.(call, calls.encode.length)
       calls.encode.push(call)
 
@@ -103,6 +111,14 @@ const target: JobOptions = {
   preset: 5,
   outputFormat: 'smart',
   quality: 95,
+}
+
+/** A qualidade baixa é de propósito: o modo converter tem de ignorá-la. */
+const converter: JobOptions = {
+  mode: 'convert',
+  preset: 5,
+  outputFormat: 'smart',
+  quality: 35,
 }
 
 describe('ImageEngine.supports', () => {
@@ -184,7 +200,9 @@ describe('ImageEngine.process — modo automático', () => {
     expect(result.height).toBe(3000)
 
     // Caminho comum: converter formato resolve no primeiro degrau.
-    expect(calls.encode).toEqual([{ format: 'webp', quality: 82, width: 4000, height: 3000 }])
+    expect(calls.encode).toEqual([
+      { format: 'webp', quality: 82, width: 4000, height: 3000, lossless: false },
+    ])
     expect(calls.resize).toHaveLength(0)
   })
 
@@ -298,6 +316,65 @@ describe('ImageEngine.process — modo meta de tamanho', () => {
     expect(result.savedBytes).toBeLessThan(0)
     expect(result.status).toBe('warning')
     expect(result.message).toBe(ENGINE_MESSAGES.largerThanOriginal)
+  })
+})
+
+describe('ImageEngine.process — modo converter', () => {
+  it('faz um encode só, sem perda e sem redimensionar', async () => {
+    const { codecs, calls } = fakeCodecs({ baseBytes: 400_000 })
+    const engine = new ImageEngine({ codecs })
+    const { ctx, progress } = jobContext()
+
+    const file = imageFile({
+      name: 'foto.jpg',
+      header: jpegHeader({ width: 4000, height: 3000 }),
+      bytes: 1_000_000,
+    })
+    const result = await engine.process(file, converter, ctx)
+
+    // A qualidade da UI (35) não chega ao encoder: converter pede o teto, e o
+    // pedido de saída sem perda viaja junto para o `codecs.ts` decidir o que
+    // cada formato faz com ele.
+    expect(calls.encode).toEqual([
+      { format: 'webp', quality: QUALITY_MAX, width: 4000, height: 3000, lossless: true },
+    ])
+    expect(calls.resize).toHaveLength(0)
+    expect(calls.decode).toHaveLength(1)
+    expect(result.status).toBe('success')
+    expect(result.width).toBe(4000)
+    expect(result.height).toBe(3000)
+    expect(progress.at(-1)).toBe(100)
+  })
+
+  it('avisa que o arquivo ficou maior, em vez de reportar sucesso', async () => {
+    // O caso do JPEG que vira PNG sem perda: 0,76 MB viram 2,23 MB.
+    const { codecs } = fakeCodecs({ baseBytes: 3_000_000 })
+    const engine = new ImageEngine({ codecs })
+    const { ctx } = jobContext()
+
+    const result = await engine.process(
+      imageFile({ name: 'foto.jpg', bytes: 760_000 }),
+      { ...converter, outputFormat: 'png' },
+      ctx,
+    )
+
+    expect(result.status).toBe('warning')
+    // A mensagem específica do modo converter, não a genérica de "ficou maior":
+    // sem o porquê, o número lê como defeito.
+    expect(result.message).toBe(MESSAGES.convertLarger)
+    expect(result.savedBytes).toBeLessThan(0)
+    expect(result.outputName).toBe('foto-compressify.png')
+  })
+
+  it('não desce a escada de qualidade mesmo sem reduzir nada', async () => {
+    const { codecs, calls } = fakeCodecs({ baseBytes: 1_000_000, floorBytes: 900_000 })
+    const engine = new ImageEngine({ codecs })
+    const { ctx } = jobContext()
+
+    await engine.process(imageFile({ name: 'foto.jpg', bytes: 100_000 }), converter, ctx)
+
+    // No modo automático este mesmo cenário gastaria os sete degraus.
+    expect(calls.encode).toHaveLength(1)
   })
 })
 

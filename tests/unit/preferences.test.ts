@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { COMPRESSION_MODES } from '@/engine/core/types'
 import { DEFAULT_OPTIONS } from '@/lib/defaults'
 import {
   clearPreferences,
@@ -67,6 +68,17 @@ describe('sanitizeOptions', () => {
       outputFormat: 'avif',
       quality: 91,
     })
+  })
+
+  it('preserva todos os modos que o tipo declara', () => {
+    // A armadilha que este teste existe para pegar: a lista de modos válidos
+    // aqui é fechada, e um subconjunto do tipo continua sendo um valor válido
+    // do tipo. Acrescentar um modo e esquecer da validação compila, não quebra
+    // nenhum outro teste, e o sintoma aparece só em uso real — a pessoa escolhe
+    // o modo novo, fecha a aba, volta e ele sumiu.
+    for (const mode of COMPRESSION_MODES) {
+      expect(sanitizeOptions({ ...DEFAULT_OPTIONS, mode }).mode).toBe(mode)
+    }
   })
 
   it('recusa valores fora do vocabulário e cai no padrão daquele campo', () => {

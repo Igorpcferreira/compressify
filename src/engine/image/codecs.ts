@@ -72,15 +72,38 @@ async function encodeJpeg(image: RgbaImage, quality: number): Promise<ArrayBuffe
   return await encode(asImageData(image), { quality })
 }
 
-async function encodeWebp(image: RgbaImage, quality: number): Promise<ArrayBuffer> {
+async function encodeWebp(
+  image: RgbaImage,
+  quality: number,
+  lossless: boolean,
+): Promise<ArrayBuffer> {
   // Sem `target_size`: medido no spike, ele estoura a meta (513 KB para um
   // alvo de 512 KB). A busca binária do app Electron fica (docs/SPIKE.md §5.4).
   const { default: encode } = await import('@jsquash/webp/encode')
-  return await encode(asImageData(image), { quality })
+
+  if (!lossless) return await encode(asImageData(image), { quality })
+
+  // `exact: 1` não é preciosismo, é o que faz o "sem perda" ser verdade em
+  // imagem com transparência: sem ele o libwebp descarta o RGB dos pixels
+  // totalmente transparentes (medido: 1.664 subpixels diferentes numa imagem
+  // de ruído com alfa, contra zero com a flag). Custa ~6% de bytes.
+  return await encode(asImageData(image), { lossless: 1, exact: 1 })
 }
 
-async function encodeAvif(image: RgbaImage, quality: number): Promise<ArrayBuffer> {
+async function encodeAvif(
+  image: RgbaImage,
+  quality: number,
+  lossless: boolean,
+): Promise<ArrayBuffer> {
   const { default: encode } = await import('@jsquash/avif/encode')
+
+  // O `@jsquash/avif` 2.1.1 **tem** modo sem perda, e ele é bit-exato: a flag
+  // fixa `quality: 100`, `qualityAlpha: -1` e `subsample: 3` (YUV 4:4:4), e o
+  // ida-e-volta sobre ruído RGB puro, com e sem alfa, devolve os mesmos bytes.
+  // Medido — o docs/HANDOFF-CONVERSAO.md §4.5 dizia que a flag não existia, e
+  // era o único ponto do estudo que a versão instalada desmente.
+  if (lossless) return await encode(asImageData(image), { lossless: true, speed: AVIF_SPEED })
+
   return await encode(asImageData(image), { quality, speed: AVIF_SPEED })
 }
 
@@ -91,10 +114,17 @@ async function encodeAvif(image: RgbaImage, quality: number): Promise<ArrayBuffe
  * 88 e a ausência de dithering são do original; o quantizador é nosso porque o
  * `image-q` custava 13,6 s por imagem de 12MP (docs/PLANO.md §3.4).
  */
-async function encodePng(image: RgbaImage, quality: number): Promise<ArrayBuffer> {
+async function encodePng(
+  image: RgbaImage,
+  quality: number,
+  lossless: boolean,
+): Promise<ArrayBuffer> {
   let source = image
 
-  if (shouldQuantize(quality)) {
+  // O PNG é sem perda por definição do formato; o que tira perda dele é o
+  // quantizador. No modo converter ele nem é consultado — a qualidade da UI
+  // não pode reintroduzir perda onde a promessa é não ter nenhuma.
+  if (!lossless && shouldQuantize(quality)) {
     source = cloneImage(image)
     quantize(source.data, source.width, source.height, {
       colors: paletteSizeForQuality(quality),
@@ -110,29 +140,52 @@ async function encodePng(image: RgbaImage, quality: number): Promise<ArrayBuffer
   return await optimise(encoded, { level: OXIPNG_LEVEL })
 }
 
+export interface EncodeImageOptions {
+  /**
+   * Pedido de saída sem perda — o modo converter. É um **pedido**, não uma
+   * promessa: o que cada formato faz com ele está na tabela abaixo, e o JPEG
+   * simplesmente não tem o que oferecer.
+   */
+  lossless?: boolean
+}
+
 /**
  * Codifica um `RgbaImage` no formato pedido.
  *
  * A qualidade é clampada aqui, na fronteira do encoder, como o `renderBuffer`
  * do app Electron fazia. A estratégia já entrega valores em faixa; isto é a
  * segunda linha de defesa, não a primeira.
+ *
+ * O que `lossless` significa em cada destino — e a UI diz o mesmo, porque
+ * prometer "sem perda" onde não há é mentira verificável:
+ *
+ * | Destino | O que acontece                    | Sem perda de verdade?      |
+ * | ------- | --------------------------------- | -------------------------- |
+ * | PNG     | quantizador desligado             | ✅ por definição do formato |
+ * | WebP    | `lossless: 1` + `exact: 1`        | ✅ medido, byte a byte      |
+ * | AVIF    | `lossless: true` (q100 · YUV444)  | ✅ medido, byte a byte      |
+ * | JPEG    | `QUALITY_MAX`                     | ❌ o formato não tem modo sem perda |
  */
 export async function encodeImage(
   image: RgbaImage,
   format: ImageFormat,
   quality: number,
+  options: EncodeImageOptions = {},
 ): Promise<Uint8Array> {
+  const lossless = options.lossless ?? false
   const clamped = Math.min(QUALITY_MAX, Math.max(QUALITY_MIN, Math.round(quality)))
 
   switch (format) {
     case 'jpeg':
+      // Sem caso de lossless: não existe JPEG sem perda. O melhor que se pode
+      // entregar é a qualidade máxima, e é o que a estratégia já pede.
       return new Uint8Array(await encodeJpeg(image, clamped))
     case 'webp':
-      return new Uint8Array(await encodeWebp(image, clamped))
+      return new Uint8Array(await encodeWebp(image, clamped, lossless))
     case 'avif':
-      return new Uint8Array(await encodeAvif(image, clamped))
+      return new Uint8Array(await encodeAvif(image, clamped, lossless))
     case 'png':
-      return new Uint8Array(await encodePng(image, clamped))
+      return new Uint8Array(await encodePng(image, clamped, lossless))
   }
 }
 

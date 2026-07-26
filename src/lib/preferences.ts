@@ -22,12 +22,8 @@
  * navegador, e para que o caminho "não existe armazenamento" seja exercitado.
  */
 
-import type {
-  CompressionMode,
-  CompressionPreset,
-  JobOptions,
-  OutputFormat,
-} from '@/engine/core/types'
+import type { CompressionPreset, JobOptions, OutputFormat } from '@/engine/core/types'
+import { COMPRESSION_MODES } from '@/engine/core/types'
 import { CUSTOM_TARGET_RANGE, DEFAULT_OPTIONS, QUALITY_RANGE } from './defaults'
 
 /**
@@ -37,7 +33,15 @@ import { CUSTOM_TARGET_RANGE, DEFAULT_OPTIONS, QUALITY_RANGE } from './defaults'
  */
 export const PREFERENCES_KEY = 'compressify:preferencias:1'
 
-const MODES: readonly CompressionMode[] = ['auto', 'target']
+/**
+ * Os modos vêm de `engine/core/types`, não de uma lista escrita aqui.
+ *
+ * Uma cópia local seria um subconjunto válido do tipo: acrescentar um modo e
+ * esquecer desta linha compilaria, passaria em todos os testes existentes, e o
+ * sintoma apareceria só no uso real — a pessoa escolhe o modo novo, fecha a
+ * aba, volta, e a validação silenciosamente devolveu o padrão.
+ */
+const MODES = COMPRESSION_MODES
 const FORMATS: readonly OutputFormat[] = ['smart', 'original', 'jpeg', 'webp', 'avif', 'png']
 const PRESETS: readonly CompressionPreset[] = [5, 10, 50, 'custom']
 

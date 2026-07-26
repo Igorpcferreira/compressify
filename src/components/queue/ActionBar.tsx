@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button'
 import { formatBytes, formatPercent, formatSavedPercent, savedPercentOf } from '@/lib/format'
 import {
   selectCanSaveToFolder,
+  selectMode,
   selectOutput,
   selectPhase,
   selectStats,
@@ -71,6 +72,9 @@ function OutputStatus() {
 export function ActionBar() {
   const stats = useQueueStore(selectStats)
   const phase = useQueueStore(selectPhase)
+  // No modo converter o botão não pode dizer "Comprimir": é exatamente o que
+  // esse modo não faz.
+  const mode = useQueueStore(selectMode)
   const output = useQueueStore(selectOutput)
   const canSaveToFolder = useQueueStore(selectCanSaveToFolder)
   const start = useQueueStore((state) => state.start)
@@ -96,9 +100,9 @@ export function ActionBar() {
             ? ` · ${stats.cancelled} cancelado${stats.cancelled === 1 ? '' : 's'}`
             : ''}
           {stats.done > 0
-            ? ` · ${formatBytes(savedBytes)} economizados (${formatSavedPercent(
-                savedPercentOf(stats.originalBytes, stats.compressedBytes),
-              )})`
+            ? ` · ${formatBytes(Math.abs(savedBytes))} ${
+                savedBytes < 0 ? 'a mais' : 'economizados'
+              } (${formatSavedPercent(savedPercentOf(stats.originalBytes, stats.compressedBytes))})`
             : ''}
         </p>
 
@@ -132,7 +136,7 @@ export function ActionBar() {
           ) : (
             <Button variant="primary" onClick={() => void start()} disabled={stats.queued === 0}>
               <Sparkles size={15} aria-hidden />
-              Comprimir tudo
+              {mode === 'convert' ? 'Converter tudo' : 'Comprimir tudo'}
             </Button>
           )}
         </div>

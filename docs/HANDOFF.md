@@ -3,9 +3,9 @@
 > Documento de continuidade. Quem retomar o Compressify (pessoa ou sessão nova de
 > IA) deve ler **este arquivo primeiro** e só então mergulhar no `PLANO.md`.
 >
-> Última atualização: 26/07/2026, ao fim do **Incremento 12**. A Fase 1 está
-> concluída e as melhorias independentes de fase também: 348 testes de unidade
-> e 97 E2E em Chromium, Firefox e WebKit.
+> Última atualização: 26/07/2026, ao fim do **Incremento 13** — o primeiro da
+> frente de conversão. A Fase 1 está concluída e as melhorias independentes de
+> fase também: 368 testes de unidade e 100 E2E em Chromium, Firefox e WebKit.
 >
 > Tudo está comitado e publicado em `origin/main`.
 >
@@ -18,10 +18,11 @@
 > Incrementos 9 a 12 (§17). O que resta antes da Fase 2 é **o deploy** — e a
 > conferência do `Content-Type` da imagem de Open Graph depois dele (§10).
 >
-> **Há uma frente nova aberta, ainda sem código:** conversão de formatos. O
-> estudo de viabilidade está em [`PLANO-CONVERSAO.md`](PLANO-CONVERSAO.md) e o
-> roteiro para começar, em [`HANDOFF-CONVERSAO.md`](HANDOFF-CONVERSAO.md) — que é
-> o arquivo a ler primeiro se a sessão for sobre conversão.
+> **A frente de conversão começou.** O **Incremento 13** — o modo "Converter",
+> sem comprimir — está feito (§21). O estudo de viabilidade está em
+> [`PLANO-CONVERSAO.md`](PLANO-CONVERSAO.md) e o roteiro, em
+> [`HANDOFF-CONVERSAO.md`](HANDOFF-CONVERSAO.md) — que é o arquivo a ler primeiro
+> se a sessão for sobre conversão. O próximo é o Incremento 14.
 >
 > ⚠️ **A regra nº 1 do §1 está revogada:** o Igor autorizou commit e push sem
 > pedir autorização a cada vez (26/07/2026).
@@ -83,11 +84,12 @@ a42a1c2  feat(acabamento): landings de SEO, acessibilidade e E2E nos três naveg
 | **10 — Perfis e preferências persistidas**   | ✅ **concluído · §18**                |
 | **11 — Antes/depois e progresso na aba**     | ✅ **concluído · §19**                |
 | **12 — PWA, uso offline e a prova do EXIF**  | ✅ **concluído · §20**                |
+| **13 — O modo "Converter", sem comprimir**   | ✅ **concluído · §21**                |
 
-`npm run check` (typecheck + lint + formatação + 348 testes) passa limpo em ~50 s — dos
+`npm run check` (typecheck + lint + formatação + 368 testes) passa limpo em ~50 s — dos
 quais ~20 s são a comparação com o app Electron (§17), que roda com os codecs WASM **e**
 o `sharp` nativo.
-`npm run e2e` roda 97 testes em Chromium, Firefox e WebKit em ~1,5 min — exige
+`npm run e2e` roda 100 testes em Chromium, Firefox e WebKit em ~1,5 min — exige
 `npx playwright install` e um `npm run build` antes.
 `npm run paridade` reescreve [`COMPARACAO-ELECTRON.md`](COMPARACAO-ELECTRON.md) a partir
 da medição.
@@ -153,8 +155,10 @@ tests/
   helpers/codecs-node.ts               inicializa os codecs reais em Node
   helpers/workers.ts                   ◆ workers de mentira, dirigidos pelo teste
   helpers/electron-reference.ts        ◇◇ o pipeline do desktop, transcrito
-  unit/                                329 testes — lógica, com codecs injetados
+  unit/                                344 testes — lógica, com codecs injetados
+  unit/file-card.test.tsx              ◐ a cor do badge e o verbo do card
   integration/engine-codecs.test.ts    6 testes — o motor com os codecs de verdade
+  integration/convert-lossless.test.ts ◐ 5 testes — a ida e volta sem perda, pixel a pixel
   integration/electron-parity.test.ts  ◇◇ 9 testes — os dois produtos lado a lado
   integration/metadata.test.ts         ○ 4 testes — o EXIF não sobrevive
   e2e/                                 ◇ 32 testes × 3 navegadores, contra out/
@@ -172,7 +176,7 @@ docs/                                  PLANO, SPIKE, HANDOFF, ARQUITETURA,
 ```
 
 `★` é o Incremento 3, `◆` o 4, `▲` o 5, `●` o 6, `◇` o 7, `◈` o 8,
-`◇◇` o 9, `◈◈` o 10, `◆◆` o 11 e `○` o 12.
+`◇◇` o 9, `◈◈` o 10, `◆◆` o 11, `○` o 12 e `◐` o 13.
 
 Dependências do Incremento 3, todas conferidas contra o `latest` do npm em 25/07/2026
 (as seis coincidiram com o que o plano previa):
@@ -808,6 +812,8 @@ arquivo. Nada de mockup.
 | **E2E antes da hidratação**   | A página funciona como HTML antes de o React assumir; uma tecla nesse intervalo mexe no `<input>` nativo e some no primeiro render controlado. Falha só no WebKit e só sob carga. Esperar o rótulo do `ThemeToggle` mudar (§18)                    |
 | **`sharp` tem `export =`**    | `typeof import('sharp').default` não existe no tipo, embora o `import()` dinâmico entregue um namespace com `default` em runtime. Daí o alias `SharpFn` e a ponte em `loadSharp` (§17)                                                             |
 | **Service worker em dev**     | Registrar em `next dev` faz o cache servir os chunks do Turbopack e o HMR para de funcionar. O registro é guardado por `NODE_ENV` (§20)                                                                                                            |
+| **Cache velho do `.next`**    | O build falha com `RealContentHashPlugin` — "an asset was cached with a reference to another asset that's not in the compilation anymore". Não é o código: apagar `.next` e rodar de novo resolve                                                  |
+| **`lossless` sem `exact`**    | O WebP sem perda descarta o RGB dos pixels totalmente transparentes se `exact: 1` não for pedido. Sem perda para quem olha, com perda para quem editar depois (§21)                                                                                |
 
 ---
 
@@ -909,7 +915,9 @@ npm run dev                # http://localhost:3000
 ### O que fazer a seguir
 
 A Fase 1 está fechada com os 10 critérios de aceite medidos, e sete dos oito itens do
-roadmap foram feitos. O que resta, em ordem:
+roadmap foram feitos. Há duas frentes abertas: a **conversão de formatos**, cujo próximo
+passo é o Incremento 14 e cujo roteiro é o
+[`HANDOFF-CONVERSAO.md`](HANDOFF-CONVERSAO.md), e o que resta desta, em ordem:
 
 1. **Deploy.** É a única coisa que separa o projeto de estar no ar, e é um passo para
    fora que precisa da decisão do Igor. O `NEXT_PUBLIC_SITE_URL` aponta para
@@ -937,7 +945,7 @@ Ordem de leitura para quem chega: `README.md` → **este arquivo** → `ARQUITET
 
 O comentário no topo do `strategy.ts` explica por que ele não importa nada — essa
 separação é o que sustenta a testabilidade do projeto inteiro. O `engine.ts` liga os
-codecs sem quebrá-la: eles entram por injeção, e é por isso que 329 dos 348 testes
+codecs sem quebrá-la: eles entram por injeção, e é por isso que 344 dos 368 testes
 rodam sem um byte de WASM. O `pool.ts` faz o mesmo uma camada acima, com a
 fábrica de workers, e a `store/queue.ts` uma acima ainda. O E2E fecha por fora: o que
 todas essas fronteiras permitiram testar isoladamente, ele prova junto, num navegador.
@@ -1125,3 +1133,92 @@ marcador dentro dos bytes é o que torna a afirmação verificável.
 A **orientação** é a exceção deliberada: ela não é preservada como metadado, é **aplicada
 aos pixels** (§3.2 do decode). A foto de celular em pé sai em pé, sem levar junto a
 coordenada de onde foi tirada.
+
+---
+
+## 21. O Incremento 13 — o modo "Converter"
+
+O primeiro da frente de conversão, e o menor do plano: nenhuma dependência nova, só os
+quatro formatos que já existem. O detalhe completo está em
+[`HANDOFF-CONVERSAO.md` §5](HANDOFF-CONVERSAO.md); aqui fica o que importa para quem lê o
+estado do projeto.
+
+Os dois modos antigos **sempre comprimem** — é o que o produto faz. Faltava o pedido
+literal do Igor: trocar o formato e não mexer na imagem. `renderConvert` é isso e nada
+mais: um decode, um encode na escala 1, `encodes: 1`. Sem escada de qualidade, sem busca
+binária, sem downscale.
+
+### "Sem comprimir" significa coisas diferentes, e a interface diz quais
+
+| Destino | Como                                                  | Sem perda de verdade?               |
+| ------- | ----------------------------------------------------- | ----------------------------------- |
+| PNG     | quantizador desligado                                 | ✅ por definição do formato         |
+| WebP    | `lossless: 1` **e `exact: 1`**                        | ✅ inclusive nos pixels invisíveis  |
+| AVIF    | `lossless: true` (q100 · qualityAlpha −1 · YUV 4:4:4) | ✅ bit-exato                        |
+| JPEG    | `QUALITY_MAX`                                         | ❌ o formato não tem modo sem perda |
+
+A tabela **não veio de ler os tipos dos encoders** — veio de medir a ida e volta pelo
+motor de produção, comparando pixel a pixel. Duas coisas só apareceram assim:
+
+1. **O estudo estava errado sobre o AVIF.** Ele registrava que o `@jsquash/avif` não
+   expunha a flag de lossless. A versão instalada (2.1.1) expõe, e o resultado é bit-exato
+   sobre ruído RGB puro, com e sem alfa. A decisão nº 5 do `HANDOFF-CONVERSAO.md` §4 foi
+   corrigida no lugar em que estava escrita.
+2. **`exact: 1` no WebP não é preciosismo.** Sem ele o libwebp descarta o RGB dos pixels
+   totalmente transparentes: 1.664 subpixels diferentes numa imagem de ruído com alfa,
+   contra zero com a flag. Custa ~6% de bytes e é a diferença entre "sem perda para quem
+   olha" e "sem perda para quem editar depois".
+
+O slider de qualidade **some** no modo converter, e no lugar dele entra a explicação de
+cada destino. Ele não faria nada — nos formatos com modo sem perda seria ignorado, e no
+JPEG é fixo no teto — e controle inerte na tela ensina a ignorar a tela. É a mesma regra
+que já escondia a meta de tamanho fora do modo meta.
+
+### O badge deixou de mentir com CSS
+
+Converter um JPEG para PNG sem perda produz arquivo **maior** — 0,76 MB viram 2,23 MB na
+medição do estudo. Está correto: o PNG guarda os pixels que o JPEG jogou fora. Mas
+`formatSavedPercent` já devolvia `+180%` e o `FileCard` pintava o badge de verde
+**sempre**.
+
+Agora a cor segue o sinal — âmbar quando cresce — e usa **o mesmo arredondamento do
+texto**: um `−0,2%` aparece como "0%" e continua verde, senão a mentira seria ao
+contrário. O resumo do lote passou a dizer "8,4 MB a mais" em vez de "economizados"
+(o `formatBytes` devolve "0 B" para negativo, então a frase antiga ficava sem número), o
+botão vira "Converter tudo" e o card diz "Convertendo".
+
+### A armadilha da preferência foi resolvida na estrutura, não com um teste
+
+`lib/preferences.ts` validava o modo contra uma lista escrita à mão. Acrescentar um valor
+ao tipo e esquecer dessa lista **compila** — a lista é um subconjunto válido do tipo — e
+não quebra teste nenhum; o sintoma aparece só em uso real, com a preferência sendo
+rejeitada em silêncio. `COMPRESSION_MODES` virou valor em `engine/core/types.ts`, o tipo
+deriva dele e a validação importa a lista. O teste que percorre todos os modos entrou
+junto, agora protegendo contra a reintrodução de uma cópia local.
+
+### O que foi verificado
+
+- **368 testes** (20 novos) e **100 E2E** (1 novo × 3 navegadores). O E2E confere o
+  cabeçalho do arquivo baixado: `RIFF`/`WEBP` com o chunk **VP8L**, que é o WebP sem
+  perda — um WebP de qualidade alta traria `VP8 `, parecido na tela e diferente na
+  promessa.
+- **Bundle inicial:** 9 scripts, de 182.034 para 182.374 bytes com gzip. São **+340
+  bytes** de UI, não zero; o que é zero é dependência nova e código de codec no casco.
+
+### Um teste antigo que era instável e ninguém sabia
+
+O E2E `cancela a fila no meio` depende de a compressão durar mais que o clique em
+"Cancelar tudo". Com seis arquivos numa máquina descarregada, cada um sai em ~0,5 s: o
+lote acaba antes do clique, não sobra nada para cancelar e o teste falha **por ter sido
+rápido demais**. Ele falhou aqui em duas execuções, com e sem as mudanças deste
+incremento — acrescentar um teste à suíte muda o escalonamento e a moeda cai do outro
+lado.
+
+A correção não foi `timeout` maior, que só esconderia: o lote passou a ter **dez arquivos
+de 1400×1050**, que é mais itens do que slots de worker — sempre há alguém na fila para
+cancelar. O teto é o buffer de 50 MB do `setInputFiles`, que trafega em base64; 14
+fixturas de 1600×1200 estouram, e a mensagem do Playwright não diz que o problema é o
+base64.
+
+Depois da correção: 9 execuções seguidas do teste isolado e duas suítes completas, verdes
+nos três navegadores.

@@ -169,6 +169,19 @@ describe('store da fila — execução', () => {
     expect(store.getState().options.outputFormat).toBe(DEFAULT_OPTIONS.outputFormat)
   })
 
+  it('leva o modo converter até o orquestrador', async () => {
+    // O modo novo não tem caminho próprio na store — e é justamente isso que
+    // este teste prende: se um dia alguém filtrar modos aqui, a fila deixaria
+    // de converter sem nenhum outro teste reclamar.
+    const { store, runs } = storeWith()
+    store.getState().addFiles([imageFile({ name: 'a.jpg' })])
+
+    store.getState().setOptions({ mode: 'convert' })
+    await store.getState().start()
+
+    expect(runs[0]?.options.mode).toBe('convert')
+  })
+
   it('registra o aviso como estado próprio, separado de sucesso', async () => {
     const { store } = storeWith({
       run: (task) => {

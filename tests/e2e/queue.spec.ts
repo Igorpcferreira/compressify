@@ -69,7 +69,14 @@ test.describe('fila de compressão', () => {
 
   test('cancela a fila no meio', async ({ page }) => {
     await page.goto('/')
-    await page.locator(FILE_INPUT).setInputFiles(fixtureFiles(6, { width: 1600, height: 1200 }))
+    // O lote precisa durar mais que o clique em "Cancelar tudo", senão não
+    // sobra nada para cancelar e o teste falha por ter sido rápido demais —
+    // aconteceu com seis arquivos numa máquina descarregada, onde cada um sai
+    // em ~0,5 s. Quatorze também garante mais arquivos que slots de worker, ou
+    // seja, sempre há alguém na fila para cancelar. O teto é o buffer de 50 MB
+    // do `setInputFiles`, que trafega em base64: dez fixturas de 1400×1050 são
+    // 29 MB de PNG e ~39 MB na transferência.
+    await page.locator(FILE_INPUT).setInputFiles(fixtureFiles(10, { width: 1400, height: 1050 }))
 
     await page.getByRole('button', { name: 'Comprimir tudo' }).click()
     await expect(page.getByRole('button', { name: 'Cancelar tudo' })).toBeVisible()
@@ -140,6 +147,47 @@ test.describe('fila de compressão', () => {
     // A fila nem aparece — e não vale contar `listitem`: o próprio aviso lista
     // os arquivos recusados numa `<ul>`.
     await expect(page.getByRole('region', { name: 'Fila de arquivos' })).toHaveCount(0)
+  })
+
+  test('converte sem comprimir, e o arquivo que sai é um WebP sem perda', async ({ page }) => {
+    await page.goto('/')
+    // O modo é um controle React: um clique antes da hidratação não chega na
+    // store. O sinal usado é o do produto, como em `preferencias.spec.ts`.
+    await expect(page.getByRole('button', { name: /^Modo (claro|escuro)$/ })).toBeVisible()
+
+    await page.locator(FILE_INPUT).setInputFiles(fixtureFiles(1, { width: 240, height: 180 }))
+    await page.getByRole('radio', { name: 'Converter sem comprimir' }).click()
+
+    // A qualidade some: no modo converter ela não faz nada, e um controle
+    // inerte na tela ensina a ignorar a tela.
+    await expect(page.getByRole('slider', { name: /qualidade/i })).toHaveCount(0)
+
+    // A explicação toma o lugar do slider — e chamar a saída JPEG de "sem
+    // perda" seria mentira, então ela diz o contrário, em letras.
+    const painel = page.getByRole('region', { name: 'Preferências de compressão' })
+    await expect(painel.getByText(/não tem modo sem perda/)).toBeVisible()
+
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Converter tudo' }).click()
+
+    const baixar = page.getByRole('button', { name: /^Baixar foto-1/ })
+    await expect(baixar).toBeVisible({ timeout: 90_000 })
+    await baixar.click()
+
+    const arquivo = await download
+    expect(arquivo.suggestedFilename()).toBe('foto-1-compressify.webp')
+
+    const stream = await arquivo.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) chunks.push(chunk as Buffer)
+    const bytes = Buffer.concat(chunks)
+
+    // O cabeçalho é a prova: RIFF/WEBP com o chunk **VP8L**, que é o WebP sem
+    // perda. Um WebP de qualidade alta traria "VP8 " — parecido na tela,
+    // diferente na promessa.
+    expect(bytes.subarray(0, 4).toString('latin1')).toBe('RIFF')
+    expect(bytes.subarray(8, 12).toString('latin1')).toBe('WEBP')
+    expect(bytes.subarray(12, 16).toString('latin1')).toBe('VP8L')
   })
 
   test('converte para o formato escolhido', async ({ page }) => {

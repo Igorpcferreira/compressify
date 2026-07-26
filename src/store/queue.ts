@@ -26,7 +26,7 @@ import {
   type OrchestratorEvents,
   type RunSummary,
 } from '@/engine/core/orchestrator'
-import type { JobOptions, JobStatus } from '@/engine/core/types'
+import type { CompressionMode, JobOptions, JobStatus } from '@/engine/core/types'
 import { acceptImage } from '@/engine/image/support'
 import { createImagePool } from '@/engine/workers/spawn'
 import { fileNameOf } from '@/engine/image/naming'
@@ -572,6 +572,8 @@ export const selectOrder = (state: QueueState): string[] => state.order
 export const selectStats = (state: QueueState): QueueStats => state.stats
 export const selectPhase = (state: QueueState): QueuePhase => state.phase
 export const selectOptions = (state: QueueState): JobOptions => state.options
+/** Primitivo de propósito: o card e a barra leem o modo sem assinar as opções. */
+export const selectMode = (state: QueueState): CompressionMode => state.options.mode
 export const selectRejected = (state: QueueState): RejectedItem[] => state.rejected
 export const selectOutput = (state: QueueState): OutputState => state.output
 export const selectCanSaveToFolder = (state: QueueState): boolean => state.canSaveToFolder

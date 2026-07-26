@@ -26,20 +26,20 @@ import { memo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { formatBytes, formatDuration, formatPercent, formatSavedPercent } from '@/lib/format'
-import { selectItem, useQueueStore, type QueueItem } from '@/store/queue'
+import { selectItem, selectMode, useQueueStore, type QueueItem } from '@/store/queue'
 import { CompareDialog } from './CompareDialog'
 
 const STATUS_LABEL: Record<QueueItem['status'], string> = {
   queued: 'Na fila',
-  running: 'Comprimindo',
+  running: 'Processando',
   success: 'Concluído',
   warning: 'Concluído com aviso',
   error: 'Falhou',
   cancelled: 'Cancelado',
 }
 
-function statusLine(item: QueueItem): string {
-  if (item.status === 'running') return `Comprimindo · ${formatPercent(item.percent)}`
+function statusLine(item: QueueItem, verb: string): string {
+  if (item.status === 'running') return `${verb} · ${formatPercent(item.percent)}`
   if (item.status === 'queued') return 'Na fila'
   if (item.status === 'cancelled') return 'Cancelado'
   if (item.status === 'error') return item.message ?? 'Falhou'
@@ -102,6 +102,12 @@ function ProgressBar({ item }: { item: QueueItem }) {
 
 export const FileCard = memo(function FileCard({ id }: { id: string }) {
   const item = useQueueStore(selectItem(id))
+  /**
+   * Um card que está convertendo não está "comprimindo". O seletor devolve uma
+   * string, não um objeto, e o modo só muda com a fila parada (os controles
+   * ficam travados durante o lote) — nenhum evento de progresso passa por aqui.
+   */
+  const mode = useQueueStore(selectMode)
   const cancelItem = useQueueStore((state) => state.cancelItem)
   const removeItem = useQueueStore((state) => state.removeItem)
   const downloadItem = useQueueStore((state) => state.downloadItem)
@@ -116,6 +122,14 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
 
   const running = item.status === 'running' || item.status === 'queued'
   const finished = item.status === 'success' || item.status === 'warning'
+  /**
+   * A cor segue o **número que está na tela**, e por isso usa o mesmo
+   * arredondamento do `formatSavedPercent`: um "+180%" pintado de verde é a
+   * interface mentindo com CSS, e um "0%" âmbar seria a mesma mentira ao
+   * contrário. Converter para um formato mais fiel produz arquivo maior — isso
+   * é correto, e o âmbar diz "repare nisto", não "deu errado".
+   */
+  const grew = Math.round(item.savedPercent ?? 0) < 0
 
   return (
     <li
@@ -137,7 +151,7 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
               item.status === 'error' ? 'text-error-text dark:text-error' : 'text-text-muted',
             )}
           >
-            {statusLine(item)}
+            {statusLine(item, mode === 'convert' ? 'Convertendo' : 'Comprimindo')}
           </span>
         </div>
 
@@ -155,7 +169,12 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
         {finished && item.compressedBytes !== null ? (
           <>
             <span className="font-bold">{formatBytes(item.compressedBytes)}</span>
-            <span className="bg-signal text-on-signal h-badge rounded-badge text-small inline-flex items-center px-2.5 font-bold">
+            <span
+              className={cn(
+                'h-badge rounded-badge text-small inline-flex items-center px-2.5 font-bold',
+                grew ? 'bg-warning text-ink' : 'bg-signal text-on-signal',
+              )}
+            >
               {formatSavedPercent(item.savedPercent ?? 0)}
             </span>
           </>

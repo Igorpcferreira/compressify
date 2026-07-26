@@ -19,7 +19,7 @@ import type {
   JobOptions,
   JobResult,
 } from '@/engine/core/types'
-import { encodeImage, resizeImage } from './codecs'
+import { encodeImage, resizeImage, type EncodeImageOptions } from './codecs'
 import { decodeImage, type DecodeOptions, type DecodeResult, type RgbaImage } from './decode'
 import { mimeTypeForFormat, resolveOutputFormat } from './format'
 import { buildOutputPath } from './naming'
@@ -27,10 +27,12 @@ import { supportsImage } from './support'
 import { HEADER_SLICE_BYTES, isDeepPng, readImageHeader, type ImageHeader } from './probe'
 import {
   AbortedError,
+  QUALITY_MAX,
   TARGET_SEARCH_ITERATIONS,
   mbToBytes,
   qualitySteps,
   renderAutomatic,
+  renderConvert,
   renderTargeted,
   type RenderOutcome,
   type Renderer,
@@ -69,7 +71,12 @@ export class UnsupportedInputError extends Error {
 /** A fronteira com o mundo WASM. Trocável nos testes. */
 export interface ImageCodecs {
   decode(blob: Blob, options: DecodeOptions): Promise<DecodeResult>
-  encode(image: RgbaImage, format: ImageFormat, quality: number): Promise<Uint8Array>
+  encode(
+    image: RgbaImage,
+    format: ImageFormat,
+    quality: number,
+    options?: EncodeImageOptions,
+  ): Promise<Uint8Array>
   resize(image: RgbaImage, width: number, height: number): Promise<RgbaImage>
 }
 
@@ -170,6 +177,21 @@ function targetBytesOf(options: JobOptions): number {
   return mbToBytes(megabytes)
 }
 
+/**
+ * Quantos encodes o modo escolhido deve gastar — a estimativa inicial do
+ * progresso. O modo converter tem a estimativa exata: é sempre um.
+ */
+function estimatedEncodes(options: JobOptions): number {
+  switch (options.mode) {
+    case 'convert':
+      return 1
+    case 'target':
+      return TARGET_SEARCH_ITERATIONS
+    case 'auto':
+      return qualitySteps(options.quality).length
+  }
+}
+
 function throwIfAborted(signal: AbortSignal): void {
   if (signal.aborted) throw new AbortedError()
 }
@@ -246,6 +268,7 @@ export class ImageEngine implements CompressionEngine {
 
     const originalBytes = file.size
     const outputFormat = resolveOutputFormat(file.name, options.outputFormat)
+    const converting = options.mode === 'convert'
     const targetBytes = options.mode === 'target' ? targetBytesOf(options) : null
 
     const header = await this.readHeader(file)
@@ -257,12 +280,9 @@ export class ImageEngine implements CompressionEngine {
     throwIfAborted(ctx.signal)
 
     const { width, height } = image
-    const progress = new ProgressReporter(
-      (percent) => {
-        ctx.onProgress(percent)
-      },
-      options.mode === 'target' ? TARGET_SEARCH_ITERATIONS : qualitySteps(options.quality).length,
-    )
+    const progress = new ProgressReporter((percent) => {
+      ctx.onProgress(percent)
+    }, estimatedEncodes(options))
     progress.decoded()
 
     /**
@@ -289,15 +309,22 @@ export class ImageEngine implements CompressionEngine {
 
     const render: Renderer = async (attempt) => {
       const source = await imageAt(attempt.scale)
-      const bytes = await this.codecs.encode(source, outputFormat, attempt.quality)
+      const bytes = await this.codecs.encode(source, outputFormat, attempt.quality, {
+        lossless: converting,
+      })
       progress.attempt(attempt.scale)
       return bytes
     }
 
     const strategyContext = { signal: ctx.signal, isExpired }
 
-    const outcome: RenderOutcome =
-      targetBytes === null
+    // No modo converter a qualidade da UI não entra: onde há modo sem perda ela
+    // seria ignorada de qualquer forma, e no JPEG — que não tem — "sem
+    // comprimir" só pode significar o teto. Pedir o teto nos dois casos deixa a
+    // regra num lugar só.
+    const outcome: RenderOutcome = converting
+      ? await renderConvert(render, { quality: QUALITY_MAX, originalBytes }, strategyContext)
+      : targetBytes === null
         ? await renderAutomatic(
             render,
             { requestedQuality: options.quality, originalBytes },

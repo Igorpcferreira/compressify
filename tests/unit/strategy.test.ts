@@ -11,6 +11,7 @@ import {
   mbToBytes,
   qualitySteps,
   renderAutomatic,
+  renderConvert,
   renderTargeted,
   type RenderAttempt,
   type Renderer,
@@ -445,6 +446,65 @@ describe('saída antecipada é equivalente às 7 iterações fixas', () => {
     expect(comparacoes).toBeGreaterThan(15)
     // O spike mediu ~1 encode economizado em 7. Aqui deve haver economia real.
     expect(economizados).toBeGreaterThan(0)
+  })
+})
+
+describe('renderConvert — trocar o formato sem comprimir', () => {
+  it('faz exatamente um encode, na resolução original', async () => {
+    const log: RenderAttempt[] = []
+    const render = fakeRenderer({ baseBytes: 500_000, log })
+
+    const resultado = await renderConvert(render, { quality: QUALITY_MAX, originalBytes: 800_000 })
+
+    // O que separa converter de comprimir: sem escada, sem busca binária e sem
+    // downscale. Um decode, um encode.
+    expect(resultado.encodes).toBe(1)
+    expect(log).toEqual([{ quality: QUALITY_MAX, scale: 1 }])
+    expect(resultado.attempt).toEqual({ quality: QUALITY_MAX, scale: 1 })
+    expect(resultado.warning).toBeUndefined()
+  })
+
+  it('avisa quando o resultado fica maior que o original', async () => {
+    // O caso real: um JPEG de 0,76 MB vira um PNG sem perda de 2,23 MB. Está
+    // correto — o PNG guarda o que o JPEG jogou fora — mas precisa ser dito.
+    const render = fakeRenderer({ baseBytes: 3_000_000 })
+
+    const resultado = await renderConvert(render, { quality: QUALITY_MAX, originalBytes: 800_000 })
+
+    expect(resultado.bytes.byteLength).toBeGreaterThan(800_000)
+    expect(resultado.warning).toBe(MESSAGES.convertLarger)
+  })
+
+  it('não avisa quando o resultado empata com o original', async () => {
+    const render: Renderer = () => Promise.resolve(new Uint8Array(1000))
+    const resultado = await renderConvert(render, { quality: QUALITY_MAX, originalBytes: 1000 })
+
+    expect(resultado.warning).toBeUndefined()
+  })
+
+  it('clampa a qualidade como as outras estratégias', async () => {
+    const log: RenderAttempt[] = []
+    const render = fakeRenderer({ log })
+
+    await renderConvert(render, { quality: 999, originalBytes: 1 })
+
+    expect(log[0]?.quality).toBe(QUALITY_MAX)
+  })
+
+  it('nem começa quando o sinal já veio abortado', async () => {
+    const render = vi.fn(fakeRenderer({}))
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(
+      renderConvert(
+        render,
+        { quality: QUALITY_MAX, originalBytes: 1 },
+        { signal: controller.signal },
+      ),
+    ).rejects.toBeInstanceOf(AbortedError)
+
+    expect(render).not.toHaveBeenCalled()
   })
 })
 

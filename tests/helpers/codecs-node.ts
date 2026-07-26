@@ -83,14 +83,24 @@ export function initNodeCodecs(): Promise<void> {
 /**
  * O AVIF é inicializado à parte: o `avif_enc.wasm` tem 3,4 MB e compilá-lo
  * custa caro. Só os testes que realmente produzem AVIF pagam esse preço.
+ *
+ * O decoder entra junto porque a ida-e-volta sem perda do modo converter
+ * precisa ler de volta o que acabou de escrever — e em Node não existe
+ * `createImageBitmap` para fazer isso pelo caminho nativo.
  */
 let avifReady: Promise<void> | null = null
 
 export function initNodeAvif(): Promise<void> {
   avifReady ??= (async () => {
     await initNodeCodecs()
-    const avif = await import('@jsquash/avif/encode')
-    await avif.init(await compiled('avif/codec/enc/avif_enc.wasm'))
+    const [encode, decode] = await Promise.all([
+      import('@jsquash/avif/encode'),
+      import('@jsquash/avif/decode'),
+    ])
+    await Promise.all([
+      encode.init(await compiled('avif/codec/enc/avif_enc.wasm')),
+      decode.init(await compiled('avif/codec/dec/avif_dec.wasm')),
+    ])
   })()
 
   return avifReady
