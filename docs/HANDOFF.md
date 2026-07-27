@@ -1353,10 +1353,22 @@ verdadeira no repositório e falsa no site.
 O `vercel.json` fixa `buildCommand` como `npm run build`, que é o comando que o README
 manda rodar e o único que produz o `out/` completo.
 
-**Se o `/sw.js` continuar 404 depois disso**, a hipótese seguinte é que o builder de Next
-da Vercel remonte a saída a partir do `.next/` em vez de servir o `out/` como ele ficou —
-e aí o próximo passo é `"framework": null` com `"outputDirectory": "out"`, tratando o
-projeto como site estático puro, que é literalmente o que ele é.
+**Fixar o `buildCommand` não bastou** — e o deploy que provou isso também provou que o
+`vercel.json` estava sendo lido, porque o `Content-Type` do item 2 mudou na mesma
+publicação. Ou seja: o comando rodava, o `out/sw.js` era gerado, e ainda assim `/sw.js`
+dava 404. A conclusão é que o builder de Next da Vercel **remonta** a saída a partir do que
+o `next build` declara, em vez de servir o `out/` como ele ficou no disco — arquivo escrito
+depois do `next build` não existe para ele.
+
+Daí o resto do `vercel.json`: `"framework": null` com `"outputDirectory": "out"`. A Vercel
+passa a tratar o projeto como o site estático que ele literalmente é — roda o
+`buildCommand` e serve o diretório. O `"trailingSlash": true` acompanha o
+`next.config.ts`, para o roteamento não mudar de forma junto.
+
+Aqui vale registrar o erro de raciocínio, porque ele é fácil de repetir: a primeira
+hipótese ("a Vercel roda só `next build`") explicava o sintoma e estava errada. Ela era
+verificável — bastava um deploy — e a verificação custou dois minutos. Hipótese plausível
+não é diagnóstico.
 
 ### Como conferir que a correção pegou
 
