@@ -102,9 +102,15 @@ function referenciasDe(html) {
   const encontradas = new Set()
 
   for (const [, url] of html.matchAll(/["'(](\/_next\/[^"')\s]+)["')\s]/g)) {
-    // O `&` escapado aparece em atributos HTML; o `.wasm` fica de fora por
-    // decisão, não por acidente — ver o cabeçalho.
-    const limpa = url.replaceAll('&amp;', '&')
+    // O `&` escapado aparece em atributos HTML. A `\` sobra quando a mesma URL
+    // também aparece dentro do payload de flight do RSC, como string JSON com
+    // aspas escapadas (`\"...\"`) — a regex não sabe que `\"` fecha a string e
+    // inclui a barra na captura. Sem o `replace`, essa barra vira um caminho
+    // que nunca existiu no disco, e só quebra em Linux: `path.join` e
+    // `fs.stat` do Windows toleram barra invertida sobrando no fim do
+    // caminho, então o bug ficava invisível localmente.
+    // O `.wasm` fica de fora por decisão, não por acidente — ver o cabeçalho.
+    const limpa = url.replaceAll('&amp;', '&').replace(/\\+$/, '')
     if (!limpa.endsWith('.wasm')) encontradas.add(limpa)
   }
 
