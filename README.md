@@ -16,6 +16,14 @@ uma delas levar um byte do arquivo do usuário.
 
 </details>
 
+<p align="center">
+  <img alt="A mesma fila no celular, em modo claro" src="docs/imagens/celular-light.png" width="262">
+  &nbsp;&nbsp;&nbsp;
+  <img alt="A mesma fila no celular, em modo escuro" src="docs/imagens/celular-dark.png" width="262">
+</p>
+
+<p align="center"><sub>No celular o card de arquivo se dobra em duas linhas — nada é escondido, nada rola para o lado.</sub></p>
+
 ---
 
 ## O que ele faz

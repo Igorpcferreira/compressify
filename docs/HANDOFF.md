@@ -178,7 +178,7 @@ tests/
   e2e/conversao.spec.ts                ◑ as landings de par num navegador
 README.md                              ◈ o que é, os números, como rodar
 scripts/serve-out.mjs                  ◇ serve out/ para o E2E e o Lighthouse
-scripts/screenshot.mjs                 ◈ regenera a captura do README
+scripts/screenshot.mjs                 ◈ regenera as 4 capturas do README
 scripts/paridade.mjs                   ◇◇ reescreve COMPARACAO-ELECTRON.md
 scripts/gerar-sw.mjs                   ○ gera o service worker a partir do out/
 docs/                                  PLANO, SPIKE, HANDOFF, ARQUITETURA,
@@ -788,15 +788,22 @@ como PNG. **Ao trocar de host, confirmar esse cabeçalho.**
   preparado**, mais o que deliberadamente não entra e por quê.
 - **`scripts/screenshot.mjs`** e os ícones (`icon.svg`, `apple-icon.svg`).
 
-### A captura é gerada, não tirada à mão
+### As capturas são geradas, não tiradas à mão
 
-`node scripts/screenshot.mjs` sobe o build estático, comprime três fotos de verdade com as
-mesmas fixturas do E2E e fotografa as duas variantes de tema. Existe como script
-versionado porque captura de tela envelhece: quando a interface mudar, é um comando, não um
-print torto.
+`node scripts/screenshot.mjs` sobe o build estático, comprime fotos de verdade com as
+mesmas fixturas do E2E e fotografa **quatro** variantes: a tela larga em claro e escuro
+(1280 px) e o celular em claro e escuro (390 px). Existe como script versionado porque
+captura de tela envelhece: quando a interface mudar, é um comando, não um print torto.
 
-Os números que aparecem na imagem são reais — 3,8 MB → 535 KB, −86%, em ~380 ms por
-arquivo. Nada de mockup.
+As duas do celular saem dentro de uma moldura de aparelho **desenhada em CSS pelo próprio
+navegador**, com fundo transparente — nenhum PNG de celular guardado no repositório para
+alguém alinhar à mão, e a mesma imagem funciona no README claro e no escuro do GitHub. A
+barra de status é a única coisa nas quatro imagens que não veio do produto; ela existe
+porque a captura do celular começa no meio da página, e sem ela o corte no topo parece
+defeito.
+
+Os números que aparecem nas imagens são reais — 3,8 MB → 535 KB, −86%, em ~380 ms por
+arquivo. Nada de mockup no que interessa.
 
 ---
 
