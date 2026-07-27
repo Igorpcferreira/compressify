@@ -134,31 +134,48 @@ export const FileCard = memo(function FileCard({ id }: { id: string }) {
   return (
     <li
       className={cn(
-        'rounded-file flex items-center gap-5 border px-5 py-4',
+        'rounded-file flex flex-col gap-4 border px-5 py-4 lg:flex-row lg:items-center lg:gap-5',
         item.status === 'error' ? 'border-error bg-error/4' : 'border-border bg-surface-raised',
       )}
     >
-      <Thumb status={item.status} />
+      {/*
+        Estreito, o card é **duas linhas**: identificação em cima, números e
+        ações embaixo. A linha única não cabe num celular — o nome do arquivo
+        era truncado até não sobrar caractere nenhum e os botões saíam pela
+        borda direita.
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-data truncate font-mono font-medium" title={item.path}>
-            {item.name}
-          </span>
-          <span
-            className={cn(
-              'text-small',
-              item.status === 'error' ? 'text-error-text dark:text-error' : 'text-text-muted',
-            )}
-          >
-            {statusLine(item, mode === 'convert' ? 'Convertendo' : 'Comprimindo')}
-          </span>
+        A partir do `lg` o agrupador vira `display: contents` e desaparece: a
+        miniatura e a coluna do nome voltam a ser filhas diretas da linha,
+        exatamente como sempre foram. É por isso que a versão larga não tem
+        marcação própria — não existem dois cards para manter em sincronia.
+
+        O corte é em 1024 px, e não antes: medindo, em 768 px a coluna do nome
+        ainda era espremida a zero pelos números e pelos três botões, que
+        sozinhos ocupam ~600 px.
+      */}
+      <div className="flex min-w-0 items-center gap-4 lg:contents">
+        <Thumb status={item.status} />
+
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-data truncate font-mono font-medium" title={item.path}>
+              {item.name}
+            </span>
+            <span
+              className={cn(
+                'text-small',
+                item.status === 'error' ? 'text-error-text dark:text-error' : 'text-text-muted',
+              )}
+            >
+              {statusLine(item, mode === 'convert' ? 'Convertendo' : 'Comprimindo')}
+            </span>
+          </div>
+
+          <ProgressBar item={item} />
         </div>
-
-        <ProgressBar item={item} />
       </div>
 
-      <div className="text-data flex flex-none items-center gap-3.5 font-mono">
+      <div className="text-data flex flex-wrap items-center gap-x-3.5 gap-y-3 font-mono lg:flex-none lg:flex-nowrap">
         <span className={cn('text-text-muted', finished && 'line-through')}>
           {formatBytes(item.originalBytes)}
         </span>
