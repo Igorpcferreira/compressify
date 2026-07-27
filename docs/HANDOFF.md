@@ -936,16 +936,12 @@ roadmap foram feitos. Há duas frentes abertas: a **conversão de formatos**, cu
 passo é o Incremento 14 e cujo roteiro é o
 [`HANDOFF-CONVERSAO.md`](HANDOFF-CONVERSAO.md), e o que resta desta, em ordem:
 
-1. **Deploy.** É a única coisa que separa o projeto de estar no ar, e é um passo para
-   fora que precisa da decisão do Igor. O `NEXT_PUBLIC_SITE_URL` aponta para
-   `compressify.vercel.app`; ajustar se o domínio for outro, porque três lugares leem
-   essa constante (canônica, sitemap, JSON-LD). **Duas conferências depois do primeiro
-   deploy:**
-   - o `Content-Type` da imagem de Open Graph, que sai sem extensão na exportação
-     estática (§10);
-   - o `Content-Type` de `/sw.js` e o cabeçalho de cache dele. Um service worker servido
-     com cache longo demais é o que faz um PWA ficar preso numa versão antiga. A Vercel
-     serve `no-cache` para `sw.js` por padrão, mas isso é da Vercel, não nosso.
+1. ~~**Deploy.**~~ **Feito** — está no ar em `https://compressify-free.vercel.app`. As duas
+   conferências previstas foram feitas contra o host e **as duas reprovaram**, mais uma
+   terceira que ninguém tinha previsto: o `/sw.js` não existia no ar. Os três estão
+   descritos e corrigidos no **§23**, e a correção mora no `vercel.json` e no padrão de
+   `src/lib/site.ts`. **Falta conferir no host que o `vercel.json` fez efeito** — as três
+   requisições estão listadas no fim do §23.
 2. **Refazer a medição do Lighthouse numa máquina em repouso.** Os 95 do README foram
    medidos com build e testes rodando; o número já foi 98. O service worker foi medido
    com e sem e custa no máximo 1 ponto, então a diferença é ambiente — mas o número
@@ -1312,3 +1308,79 @@ inteiro e faria a barra repintar dezenas de vezes por segundo, desfazendo a inva
 - Um teste antigo precisou de ajuste honesto: `getByRole('listitem')` na página inteira
   passou a contar os links da grade "Todas as conversões", que é uma `<ul>` de verdade. A
   contagem de cards passou a ser escopada na região "Fila de arquivos".
+
+---
+
+## 23. O deploy — três defeitos que só o host mostrou
+
+O site está em **`https://compressify-free.vercel.app`**. As duas conferências que o §16
+deixou pendentes para "depois do deploy" foram feitas por requisição real ao host, e as
+duas reprovaram. Uma terceira apareceu no caminho.
+
+### 1. O `og:image` apontava para outro site
+
+`SITE_URL` tinha como padrão `https://compressify.vercel.app` e `NEXT_PUBLIC_SITE_URL`
+nunca foi definida na Vercel. Resultado: `canonical`, `og:url`, `og:image` e as 16 URLs do
+`sitemap.xml` apontavam todas para um domínio que **é outro deploy** — ele responde 200,
+com o mesmo título, e o `/opengraph-image` dele dá 404. Todo link compartilhado aparecia
+sem imagem.
+
+O padrão em `src/lib/site.ts` passou a ser o endereço real. `NEXT_PUBLIC_SITE_URL`
+continua existindo para o dia em que houver domínio próprio.
+
+O que isso ensina: um padrão que não é o endereço real não é um padrão, é um bug
+silencioso — e nenhum teste local o pegaria, porque localmente ninguém resolve a URL.
+
+### 2. `Content-Type: application/octet-stream` na imagem de compartilhamento
+
+Era a conferência prevista, e o comentário do `scripts/serve-out.mjs` já a descrevia ao pé
+da letra: a rota `opengraph-image` sai **sem extensão** na exportação estática, e a Vercel
+decide o tipo pelo sufixo do nome. Os bytes são PNG (`89 50 4E 47`), o cabeçalho diz
+`octet-stream`, e nenhuma rede social aceita isso como imagem.
+
+O `vercel.json` força o `Content-Type` da rota. Se algum dia o host ignorar esse cabeçalho,
+o plano B é maior e mais robusto: emitir o PNG com nome terminado em `.png` e apontar
+`openGraph.images` para ele à mão — aí nenhum host precisa adivinhar nada.
+
+### 3. `/sw.js` respondia 404 — não havia service worker no ar
+
+O `build` do `package.json` é `next build --webpack && node scripts/gerar-sw.mjs`, mas a
+Vercel estava rodando **só `next build`** (o padrão do preset de Next.js). O service worker
+nunca era gerado. O `manifest.webmanifest` respondia 200 normalmente — ou seja, o navegador
+oferecia instalar um app que não abria offline. A frase "funciona sem rede" do README era
+verdadeira no repositório e falsa no site.
+
+O `vercel.json` fixa `buildCommand` como `npm run build`, que é o comando que o README
+manda rodar e o único que produz o `out/` completo.
+
+**Se o `/sw.js` continuar 404 depois disso**, a hipótese seguinte é que o builder de Next
+da Vercel remonte a saída a partir do `.next/` em vez de servir o `out/` como ele ficou —
+e aí o próximo passo é `"framework": null` com `"outputDirectory": "out"`, tratando o
+projeto como site estático puro, que é literalmente o que ele é.
+
+### Como conferir que a correção pegou
+
+Depois do próximo deploy, três requisições — nesta ordem, porque a primeira que falhar
+explica as outras:
+
+```bash
+curl -sI https://compressify-free.vercel.app/sw.js | head -3
+#   200, e não 404
+
+curl -sIL https://compressify-free.vercel.app/opengraph-image | grep -i content-type
+#   image/png, e não application/octet-stream
+
+curl -s https://compressify-free.vercel.app/ | grep -o 'og:image[^>]*'
+#   o domínio tem de ser compressify-free.vercel.app
+```
+
+E, por fim, o teste que vale mais que os três: colar o link num WhatsApp. O Facebook e o X
+mantêm cache de prévia por dias — se o cartão vier velho, o
+[Sharing Debugger](https://developers.facebook.com/tools/debug/) força a releitura.
+
+### A lição comum aos três
+
+Nenhum deles é bug de produto, nenhum aparece em `npm run check`, nenhum aparece no E2E — e
+os três quebram promessas que o README faz. O E2E prova o artefato; **o artefato não é o
+deploy**. O que só existe no host precisa ser conferido no host, com uma requisição de
+verdade.
