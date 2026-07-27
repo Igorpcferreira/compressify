@@ -940,8 +940,9 @@ passo é o Incremento 14 e cujo roteiro é o
    conferências previstas foram feitas contra o host e **as duas reprovaram**, mais uma
    terceira que ninguém tinha previsto: o `/sw.js` não existia no ar. Os três estão
    descritos e corrigidos no **§23**, e a correção mora no `vercel.json` e no padrão de
-   `src/lib/site.ts`. **Falta conferir no host que o `vercel.json` fez efeito** — as três
-   requisições estão listadas no fim do §23.
+   `src/lib/site.ts`. As três correções foram **conferidas no host** depois da publicação;
+   as requisições que as conferem estão no fim do §23, para repetir quando o `vercel.json`
+   mudar.
 2. **Refazer a medição do Lighthouse numa máquina em repouso.** Os 95 do README foram
    medidos com build e testes rodando; o número já foi 98. O service worker foi medido
    com e sem e custa no máximo 1 ponto, então a diferença é ambiente — mas o número
@@ -1370,10 +1371,28 @@ hipótese ("a Vercel roda só `next build`") explicava o sintoma e estava errada
 verificável — bastava um deploy — e a verificação custou dois minutos. Hipótese plausível
 não é diagnóstico.
 
-### Como conferir que a correção pegou
+### A correção foi conferida no host
 
-Depois do próximo deploy, três requisições — nesta ordem, porque a primeira que falhar
-explica as outras:
+Os três passaram, contra `compressify-free.vercel.app`, depois da publicação:
+
+|                     | antes                      | depois                            |
+| ------------------- | -------------------------- | --------------------------------- |
+| `/sw.js`            | 404                        | **200**, 4.093 bytes              |
+| `/opengraph-image/` | `application/octet-stream` | **`image/png`**                   |
+| `og:image`          | `compressify.vercel.app`   | **`compressify-free.vercel.app`** |
+
+Trocar o preset de framework não custou nada do resto: `/`, as landings,
+`manifest.webmanifest`, `sitemap.xml`, `robots.txt`, `icon.svg`, o CSS e os chunks
+continuam 200 com o tipo certo, o `.wasm` continua `application/wasm` — que é o que faz o
+`instantiateStreaming` não cair no caminho lento — e uma rota inexistente continua 404.
+
+Uma armadilha da própria conferência, para não cair nela de novo: conferir um chunk pelo
+nome que o **build local** produziu dá 404 à toa. Os hashes não batem entre o Windows daqui
+e o Linux da Vercel. As URLs a testar têm de sair do HTML publicado.
+
+### As requisições, para repetir quando o `vercel.json` mudar
+
+Nesta ordem, porque a primeira que falhar explica as outras:
 
 ```bash
 curl -sI https://compressify-free.vercel.app/sw.js | head -3
